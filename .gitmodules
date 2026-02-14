@@ -1,0 +1,3 @@
+[submodule "data_sources/cvelist"]
+	path = data_sources/cvelist
+	url = https://github.com/CVEProject/cvelistV5.git
