@@ -45,13 +45,6 @@ class CVESymbolScraper:
         self.request_delay = 0.6 if not nvd_api_key else 0.02
         self.last_request_time = 0
 
-    def _rate_limit(self):
-        """Enforce rate limiting"""
-        elapsed = time.time() - self.last_request_time
-        if elapsed < self.request_delay:
-            time.sleep(self.request_delay - elapsed)
-        self.last_request_time = time.time()
-
     def fetch_cve(self, cve_id: str) -> Dict:
         """Fetch CVE data from NVD API"""
         self._rate_limit()
@@ -311,6 +304,74 @@ class CVESymbolScraper:
             logger.warning(f"Could not fetch GitHub issue {issue_url}: {e}")
 
         return symbols
+
+    def analyze_cve_data(self, cve_data: Dict) -> Dict[str, Any]:
+        """Complete analysis of a CVE to extract vulnerable symbols"""
+
+        # Fetch CVE data
+        # cve_data = self.fetch_cve(cve_id)
+        # if not cve_data:
+        #     return {
+        #         "cve_id": cve_id,
+        #         "error": "Could not fetch CVE data",
+        #         "symbols": [],
+        #     }
+
+        all_symbols = []
+        cve_id = cve_data.get("id", "")
+        logger.info(f"Analyzing {cve_id}...")
+
+        # Extract from description
+        descriptions = cve_data.get("descriptions", [])
+        for desc in descriptions:
+            if desc.get("lang") == "en":
+                all_symbols.extend(
+                    self.extract_symbols_from_description(desc["value"], cve_id)
+                )
+
+        # Extract from references
+        references = cve_data.get("references", [])
+        for ref in references:
+            url = ref.get("url", "")
+
+            # GitHub commits
+            if "github.com" in url and "/commit/" in url:
+                logger.info(f"  Analyzing commit: {url}")
+                diff = self.fetch_github_commit_diff(url)
+                if diff:
+                    all_symbols.extend(
+                        self.extract_symbols_from_diff(diff, cve_id, url)
+                    )
+
+            # GitHub issues/PRs
+            elif "github.com" in url and ("/issues/" in url or "/pull/" in url):
+                logger.info(f"  Analyzing issue/PR: {url}")
+                all_symbols.extend(self.extract_symbols_from_github_issue(url, cve_id))
+
+        # Deduplicate symbols (keep highest confidence)
+        symbol_dict = {}
+        for symbol in all_symbols:
+            key = symbol.name.lower()
+            if key not in symbol_dict or self._confidence_score(
+                symbol.confidence
+            ) > self._confidence_score(symbol_dict[key].confidence):
+                symbol_dict[key] = symbol
+
+        unique_symbols = list(symbol_dict.values())
+
+        # Sort by confidence
+        unique_symbols.sort(
+            key=lambda x: self._confidence_score(x.confidence), reverse=True
+        )
+
+        return {
+            "cve_id": cve_id,
+            "description": descriptions[0]["value"] if descriptions else "",
+            "published_date": cve_data.get("published"),
+            "references": [ref["url"] for ref in references],
+            "symbols": unique_symbols,
+            "symbol_count": len(unique_symbols),
+        }
 
     def analyze_cve(self, cve_id: str) -> Dict[str, Any]:
         """Complete analysis of a CVE to extract vulnerable symbols"""
