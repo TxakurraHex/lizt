@@ -41,7 +41,12 @@ def insert_cve_symbols(scraper_result_dict: Dict) -> None:
             cursor.executemany(
                 """INSERT INTO symbols
                 (cve_id, symbol_name, source, confidence, context)
-                VALUES (%s, %s, %s, %s, %s)""",
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (cve_id, symbol_name)
+                DO UPDATE SET
+                    source = EXCLUDED.source,
+                    confidence = EXCLUDED.confidence,
+                    context = EXCLUDED.context""",
                 symbol_rows,
             )
 

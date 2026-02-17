@@ -46,16 +46,16 @@ def main():
                 all_results.append(results)
 
                 # Print results
-                logger.info(f"\n{'='*80}")
+                logger.debug(f"\n{'='*80}")
                 logger.info(f"CVE: {results['cve_id']}")
-                logger.info(f"Symbols found: {results['symbol_count']}")
-                logger.info(f"{'='*80}\n")
+                logger.debug(f"Symbols found: {results['symbol_count']}")
+                logger.debug(f"{'='*80}\n")
 
                 for symbol in results["symbols"]:
                     logger.info(f"Symbol: {symbol.name}")
-                    logger.info(f"  Source: {symbol.source}")
-                    logger.info(f"  Confidence: {symbol.confidence}")
-                    logger.info(f"  Context: {symbol.context[:100]}...")
+                    logger.debug(f"  Source: {symbol.source}")
+                    logger.debug(f"  Confidence: {symbol.confidence}")
+                    logger.debug(f"  Context: {symbol.context[:100]}...")
                     logger.info("")
 
                 if args.output and results["symbol_count"] != 0:

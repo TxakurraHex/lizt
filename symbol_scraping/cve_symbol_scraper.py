@@ -38,12 +38,19 @@ class CVESymbolScraper:
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "CVE-Symbol-Scraper/1.0"})
         if nvd_api_key:
-            logger.info("Appending api key")
+            logger.debug("Appending api key")
             self.session.headers.update({"apiKey": nvd_api_key})
 
         # Rate limiting
         self.request_delay = 0.6 if not nvd_api_key else 0.02
         self.last_request_time = 0
+
+    def _rate_limit(self):
+        """Enforce rate limiting"""
+        elapsed = time.time() - self.last_request_time
+        if elapsed < self.request_delay:
+            time.sleep(self.request_delay - elapsed)
+        self.last_request_time = time.time()
 
     def fetch_cve(self, cve_id: str) -> Dict:
         """Fetch CVE data from NVD API"""
@@ -132,7 +139,7 @@ class CVESymbolScraper:
             )
 
         # Pattern 4: Identifiers followed by common vulnerability keywords
-        vuln_keywords = r'[`"]?([a-zA-Z_][a-zA-Z0-9_]{2,})[`"]\s+(vulnerable function|affected function|function|method|symbol|API|call to)?'
+        vuln_keywords = r'[`"]?([a-zA-Z_][a-zA-Z0-9_]{2,})[`"]?\s+(vulnerable function|affected function|function|method|symbol|API|call to)'
         for match in re.finditer(vuln_keywords, description, re.IGNORECASE):
             func_name = match.group(1)
             context = description[
@@ -172,6 +179,7 @@ class CVESymbolScraper:
         try:
             # Convert GitHub URL to patch URL
             if "github.com" in commit_url:
+                self._rate_limit()
                 patch_url = commit_url.rstrip("/") + ".patch"
                 response = self.session.get(patch_url, timeout=30)
                 response.raise_for_status()
@@ -288,6 +296,7 @@ class CVESymbolScraper:
             elif "/issues/" in api_url:
                 api_url = api_url.replace("/issues/", "/issues/")
 
+            self._rate_limit()
             response = self.session.get(api_url, timeout=30)
             response.raise_for_status()
             data = response.json()
@@ -302,7 +311,8 @@ class CVESymbolScraper:
 
         except requests.RequestException as e:
             logger.warning(f"Could not fetch GitHub issue {issue_url}: {e}")
-
+        except AttributeError as e:
+            logger.warning(f"AttributeError: {e}")
         return symbols
 
     def analyze_cve_data(self, cve_data: Dict) -> Dict[str, Any]:
@@ -319,7 +329,7 @@ class CVESymbolScraper:
 
         all_symbols = []
         cve_id = cve_data.get("id", "")
-        logger.info(f"Analyzing {cve_id}...")
+        logger.debug(f"Analyzing {cve_id}...")
 
         # Extract from description
         descriptions = cve_data.get("descriptions", [])
@@ -336,7 +346,7 @@ class CVESymbolScraper:
 
             # GitHub commits
             if "github.com" in url and "/commit/" in url:
-                logger.info(f"  Analyzing commit: {url}")
+                logger.debug(f"  Analyzing commit: {url}")
                 diff = self.fetch_github_commit_diff(url)
                 if diff:
                     all_symbols.extend(
@@ -345,7 +355,7 @@ class CVESymbolScraper:
 
             # GitHub issues/PRs
             elif "github.com" in url and ("/issues/" in url or "/pull/" in url):
-                logger.info(f"  Analyzing issue/PR: {url}")
+                logger.debug(f"  Analyzing issue/PR: {url}")
                 all_symbols.extend(self.extract_symbols_from_github_issue(url, cve_id))
 
         # Deduplicate symbols (keep highest confidence)
@@ -375,7 +385,7 @@ class CVESymbolScraper:
 
     def analyze_cve(self, cve_id: str) -> Dict[str, Any]:
         """Complete analysis of a CVE to extract vulnerable symbols"""
-        logger.info(f"Analyzing {cve_id}...")
+        logger.debug(f"Analyzing {cve_id}...")
 
         # Fetch CVE data
         cve_data = self.fetch_cve(cve_id)
@@ -403,7 +413,7 @@ class CVESymbolScraper:
 
             # GitHub commits
             if "github.com" in url and "/commit/" in url:
-                logger.info(f"  Analyzing commit: {url}")
+                logger.debug(f"  Analyzing commit: {url}")
                 diff = self.fetch_github_commit_diff(url)
                 if diff:
                     all_symbols.extend(
@@ -412,7 +422,7 @@ class CVESymbolScraper:
 
             # GitHub issues/PRs
             elif "github.com" in url and ("/issues/" in url or "/pull/" in url):
-                logger.info(f"  Analyzing issue/PR: {url}")
+                logger.debug(f"  Analyzing issue/PR: {url}")
                 all_symbols.extend(self.extract_symbols_from_github_issue(url, cve_id))
 
         # Deduplicate symbols (keep highest confidence)

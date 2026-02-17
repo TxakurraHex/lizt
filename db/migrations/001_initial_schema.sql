@@ -24,3 +24,5 @@ CREATE INDEX idx_symbols_cve_id ON symbols (cve_id);
 CREATE INDEX idx_symbols_symbol_name ON symbols (symbol_name);
 
 CREATE INDEX idx_symbols_cve_symbol ON symbols (cve_id, symbol_name);
+
+ALTER TABLE symbols ADD CONSTRAINT unique_cve_symbol UNIQUE (cve_id, symbol_name);

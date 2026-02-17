@@ -1,6 +1,9 @@
-# CVE Symbol Scraper
+# LIZT
 
-A comprehensive Python tool for extracting vulnerable function names and symbols from CVE (Common Vulnerabilities and Exposures) entries by analyzing NVD data, GitHub commits, and security advisories.
+A comprehensive tool for:
+- Manufacturing and maintaining symbol maps extracted from CVE information
+- Detecting and interpreting environment configurations and characteristics, including installed kernel modules
+- Utilizing information collected by the tool to scan a process's runtime behavior, ranking any detected vulnerabilities with the added context information and reachability analysis.
 
 ## Features
 
@@ -16,8 +19,10 @@ A comprehensive Python tool for extracting vulnerable function names and symbols
   - Method names
   - API symbols
 - **Confidence Scoring**: Rates symbol findings as high, medium, or low confidence
-- **Rate Limiting**: Respects NVD API rate limits (with optional API key support)
-- **Export Capabilities**: Save results to JSON for further analysis
+
+## Pre-Requisites
+- python3
+- PostgreSQL
 
 ## Installation
 
@@ -31,51 +36,6 @@ pip install requests
 ```
 
 ## Quick Start
-
-### Basic Usage
-
-```python
-from cve_symbol_scraper import CVESymbolScraper
-
-# Initialize scraper
-scraper = CVESymbolScraper()
-
-# Analyze a CVE
-results = scraper.analyze_cve('CVE-2021-44228')
-
-# Display results
-print(f"Found {results['symbol_count']} vulnerable symbols")
-for symbol in results['symbols']:
-    print(f"  {symbol.name} [{symbol.confidence}]")
-```
-
-### Command Line Usage
-
-```bash
-# Analyze a single CVE
-python cve_symbol_scraper.py CVE-2021-44228
-
-# Analyze multiple CVEs
-python cve_symbol_scraper.py CVE-2021-44228 CVE-2021-3156 CVE-2021-4034
-
-# Export results to JSON
-python cve_symbol_scraper.py CVE-2021-44228 --output results.json
-
-# Use with NVD API key for higher rate limits
-python cve_symbol_scraper.py CVE-2021-44228 --api-key YOUR_API_KEY
-```
-
-## Getting an NVD API Key
-
-While the tool works without an API key, getting one increases your rate limit from 5 to 50 requests per 30 seconds:
-
-1. Visit https://nvd.nist.gov/developers/request-an-api-key
-2. Request an API key
-3. Use it with `--api-key` flag or in code:
-
-```python
-scraper = CVESymbolScraper(nvd_api_key='your-api-key-here')
-```
 
 ## How It Works
 
@@ -98,51 +58,6 @@ Extracts symbols from issue titles and descriptions where CVE fixes are discusse
 - **High**: Symbol found in commit diff or explicitly mentioned with vulnerability keywords
 - **Medium**: Symbol found in function calls or description text
 - **Low**: Symbol found in backticks or generic mentions
-
-## Examples
-
-### Example 1: Analyze Log4Shell (CVE-2021-44228)
-
-```python
-scraper = CVESymbolScraper()
-results = scraper.analyze_cve('CVE-2021-44228')
-
-# Filter high confidence symbols
-high_conf = [s for s in results['symbols'] if s.confidence == 'high']
-for symbol in high_conf:
-    print(f"{symbol.name} - {symbol.source}")
-```
-
-### Example 2: Batch Analysis
-
-```python
-cves = ['CVE-2021-44228', 'CVE-2021-3156', 'CVE-2021-4034']
-scraper = CVESymbolScraper()
-
-for cve_id in cves:
-    results = scraper.analyze_cve(cve_id)
-    print(f"{cve_id}: {results['symbol_count']} symbols")
-```
-
-### Example 3: Export to JSON
-
-```python
-scraper = CVESymbolScraper()
-results = scraper.analyze_cve('CVE-2021-44228')
-scraper.export_results(results, 'log4shell_symbols.json')
-```
-
-### Example 4: Filter by Source
-
-```python
-results = scraper.analyze_cve('CVE-2021-44228')
-
-# Symbols from commits
-commit_symbols = [s for s in results['symbols'] if 'commit' in s.source]
-
-# Symbols from descriptions
-desc_symbols = [s for s in results['symbols'] if 'description' in s.source]
-```
 
 ## Output Format
 
@@ -179,31 +94,6 @@ Each symbol has the following attributes:
 
 ## Advanced Usage
 
-### Custom Symbol Pattern Matching
-
-You can extend the scraper to detect additional patterns:
-
-```python
-# Add custom pattern to extract_symbols_from_description method
-custom_pattern = r'your_regex_pattern'
-for match in re.finditer(custom_pattern, description):
-    # Process matches
-    pass
-```
-
-### Analyzing Specific Programming Languages
-
-The scraper includes patterns for C/C++, Python, Java, and JavaScript. To focus on specific languages:
-
-```python
-results = scraper.analyze_cve('CVE-2021-XXXXX')
-
-# Filter to C/C++ symbols (from diffs)
-c_symbols = [s for s in results['symbols'] 
-             if 'commit_diff' in s.source and 
-             ('void' in s.context or 'int' in s.context)]
-```
-
 ## Limitations
 
 - **Symbol Detection Accuracy**: Not all vulnerable symbols may be explicitly mentioned in CVE data
@@ -211,40 +101,6 @@ c_symbols = [s for s in results['symbols']
 - **GitHub Content**: Requires public GitHub repositories; cannot access private repos
 - **Language Support**: Pattern matching works best for C/C++, Python, Java, JavaScript
 - **False Positives**: May detect non-vulnerable functions mentioned in context
-
-## Use Cases
-
-1. **Security Research**: Identify specific vulnerable functions for deeper analysis
-2. **Vulnerability Scanning**: Build custom scanners targeting specific vulnerable symbols
-3. **Patch Verification**: Confirm which functions were patched in security updates
-4. **Code Auditing**: Find usages of vulnerable functions in your codebase
-5. **Threat Intelligence**: Track vulnerable symbols across multiple CVEs
-
-## Best Practices
-
-1. **Use API Key**: Get an NVD API key for faster analysis
-2. **Cross-Reference**: Verify symbols by checking multiple sources
-3. **Focus on High Confidence**: Prioritize high-confidence symbols for security work
-4. **Check Context**: Review the context field to understand how/why a symbol is vulnerable
-5. **Rate Limiting**: Be mindful of rate limits when analyzing many CVEs
-
-## Testing Known CVEs
-
-Try these well-documented CVEs for testing:
-
-- `CVE-2021-44228` - Log4Shell (Apache Log4j2)
-- `CVE-2021-3156` - Sudo heap overflow
-- `CVE-2021-4034` - PwnKit (Polkit)
-- `CVE-2022-0847` - Dirty Pipe (Linux kernel)
-- `CVE-2014-0160` - Heartbleed (OpenSSL)
-
-## Contributing
-
-Feel free to extend this tool with:
-- Additional programming language patterns
-- More sophisticated symbol extraction
-- Integration with other vulnerability databases
-- Machine learning for improved symbol detection
 
 ## License
 
