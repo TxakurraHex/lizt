@@ -236,3 +236,5 @@ results/
 # Cache
 .cache/
 cache/
+
+api-key.txt
