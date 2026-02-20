@@ -1,6 +1,0 @@
-[submodule "data_sources/cvelist"]
-	path = data_sources/cvelist
-	url = https://github.com/CVEProject/cvelistV5.git
-[submodule "data_sources/nvd"]
-	path = data_sources/nvd
-	url = https://github.com/fkie-cad/nvd-json-data-feeds.git

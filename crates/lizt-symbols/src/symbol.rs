@@ -23,3 +23,7 @@ pub struct Symbol {
     pub cve_id: String,
     pub source: String,     // Description, git diff, etc.
 }
+
+pub fn get_cves_from_cpes(api_key: &str, cpe_list: Vec<String>) -> Vec<String> {
+
+}

@@ -46,6 +46,9 @@ version = "0.1.0"
 [[package]]
 name = "lizt-symbols"
 version = "0.1.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "memchr"
