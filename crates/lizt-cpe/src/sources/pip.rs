@@ -31,7 +31,6 @@ impl Source for PipSource {
                         vendor: String::new(),
                         product: pkg.name.to_lowercase().replace("-", "_"),
                         version: Some(pkg.version),
-                        raw: String::new(), // Generated later
                     },
                     source: CpeSource::PackageManager(self.name().to_string()),
                 })

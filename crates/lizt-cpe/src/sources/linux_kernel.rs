@@ -31,6 +31,5 @@ fn get_kernel_info() -> Option<CpeEntry> {
         vendor: "linux".to_string(),
         product: "linux_kernel".to_string(),
         version: Some(kernel_version.to_string()),
-        raw: String::new(),
     })
 }

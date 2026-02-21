@@ -23,7 +23,6 @@ impl Source for DpkgSource {
                         vendor: String::new(),
                         product: product.to_lowercase().replace("-", "_"),
                         version: Some(version.to_string()),
-                        raw: String::new(),
                     },
                     source: CpeSource::PackageManager(self.name().to_string()),
                 })

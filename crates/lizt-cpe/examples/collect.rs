@@ -16,7 +16,7 @@ fn main() {
     inventory.collect();
 
     for item in &inventory.items {
-        println!("{:?}", item);
+        println!("{:?} -> {}", item.source, item.cpe.match_string());
     }
 
     println!("Collected {} items from {} sources", inventory.items.len(), inventory.sources.len());

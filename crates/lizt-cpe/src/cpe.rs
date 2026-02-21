@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use strum::{Display, EnumString};
+use std::fmt;
 
 /// Parsed CPE 2.3 entry from NVD dictionary or os-release
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -7,13 +9,27 @@ pub struct CpeEntry {
     pub vendor: String,
     pub product: String,
     pub version: Option<String>,
-    pub raw: String, // Original CPE string e.g. "cpe:2.3:o:cannonical:ubuntu_linux:24.04:..."
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl CpeEntry {
+    pub fn match_string(&self) -> String {
+        format!("cpe:2.3:{}:{}:{}", self.part, self.vendor, self.product)
+    }
+}
+
+impl fmt::Display for CpeEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "cpe:2.3:{}:{}:{}", self.part, self.vendor, self.product)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Display, EnumString)]
 pub enum CpePart {
+    #[strum(serialize = "a")]
     Application,
+    #[strum(serialize = "o")]
     OperatingSystem,
+    #[strum(serialize = "h")]
     Hardware,
     Unknown,
 }

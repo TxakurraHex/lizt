@@ -37,7 +37,6 @@ fn os_to_cpe(os_release_conf: &HashMap<String, String>) -> Option<CpeEntry> {
             vendor: "canonical".to_string(),
             product: "ubuntu_linux".to_string(),
             version: os_release_conf.get("VERSION_ID").cloned(),
-            raw: String::new(),
         }),
         _ => None
     }
