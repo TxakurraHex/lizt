@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "crates/lizt-cpe",
+    "crates/lizt-cpe", "crates/lizt-nvd",
     "crates/lizt-symbols",
 ]
 resolver = "2"

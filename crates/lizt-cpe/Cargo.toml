@@ -10,3 +10,4 @@ serde_json = { workspace = true }
 strum = { workspace = true }
 regex = { workspace = true }
 radix_trie = { workspace = true }
+reqwest = { workspace = true }
