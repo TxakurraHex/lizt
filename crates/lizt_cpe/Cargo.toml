@@ -1,5 +1,5 @@
 [package]
-name = "lizt-cpe"
+name = "lizt_cpe"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,7 +7,6 @@ edition = "2024"
 serde = { workspace = true }
 tracing = { workspace = true }
 serde_json = { workspace = true }
-strum = { workspace = true }
 regex = { workspace = true }
 radix_trie = { workspace = true }
-reqwest = { workspace = true }
+lizt_core = { path = "../lizt_core" }

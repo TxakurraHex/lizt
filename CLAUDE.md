@@ -15,7 +15,7 @@ cargo build                    # Build all crates
 cargo build --release          # Release build
 cargo run -p lizt-cli          # Run the CLI
 cargo test                     # Run all tests
-cargo test -p lizt-core        # Run tests for a specific crate
+cargo test -p lizt_core        # Run tests for a specific crate
 cargo check                    # Check compilation without building
 cargo fmt                      # Format code
 cargo clippy                   # Lint

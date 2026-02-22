@@ -601,30 +601,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
-name = "lizt-cpe"
+name = "lizt_core"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "strum",
+]
+
+[[package]]
+name = "lizt_cpe"
+version = "0.1.0"
+dependencies = [
+ "lizt_core",
  "radix_trie",
  "regex",
- "reqwest",
  "serde",
  "serde_json",
- "strum",
  "tracing",
 ]
 
 [[package]]
-name = "lizt-nvd"
+name = "lizt_rest"
 version = "0.1.0"
 dependencies = [
+ "lizt_core",
  "reqwest",
  "serde",
 ]
 
 [[package]]
-name = "lizt-symbols"
+name = "lizt_symbols"
 version = "0.1.0"
 dependencies = [
+ "lizt_core",
+ "lizt_rest",
+ "regex",
  "serde",
 ]
 

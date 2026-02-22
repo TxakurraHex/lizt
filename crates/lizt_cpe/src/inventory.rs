@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::OnceLock;
 use radix_trie::Trie;
 use regex::Regex;
-use crate::cpe::{CpeSource, SystemCpe};
+use lizt_core::cpe::{SystemCpe, CpeSource};
 
 /// Trie to convert common libraries and binaries to known CPE values
 fn vendor_trie() -> &'static Trie<String, (&'static str, &'static str)> {

@@ -1,0 +1,9 @@
+[package]
+name = "lizt_rest"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { workspace = true }
+reqwest = { workspace = true }
+lizt_core = { path = "../lizt_core" }

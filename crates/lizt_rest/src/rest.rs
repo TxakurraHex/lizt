@@ -1,12 +1,12 @@
 use reqwest::blocking::Client;
 use crate::nvd_cpe::{NvdCpeResp, NvdProduct};
-use crate::nvd_cve::{NvdVulnerability, NvdCveResponse};
+use crate::nvd_cve::{NvdVulnerability, NvdCveResponse, GitHubIssue};
 
-pub struct NvdRestClient {
+pub struct LiztRestClient {
     client: Client,
 }
 
-impl NvdRestClient {
+impl LiztRestClient {
     pub fn new (api_key: Option<String>) -> Self {
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert(
@@ -61,6 +61,49 @@ impl NvdRestClient {
             },
             Err(e) => {
                 eprintln!("Error fetching CVE from cpeName {}: {}",cpe_name, e);
+                None
+            }
+        }
+    }
+
+    pub fn request_github_commit_diff(&self, commit_url: &String) -> Option<String> {
+        if !commit_url.contains("github.com") {
+            return None;
+        }
+
+        let patch_url = format!("{}.patch", commit_url.trim_end_matches("/"));
+        match self.client.get(&patch_url).send() {
+            Ok(resp) if resp.status().is_success() => resp.text().ok(),
+            Ok(resp) => {
+                eprintln!("Couldn't get commit diff from {} (status {})", commit_url, resp.status());
+                None
+            }
+            Err(e) => {
+                eprintln!("Couldn't get commit diff from {}: {}", commit_url, e);
+                None
+            }
+        }
+    }
+
+    pub fn request_github_issue(&self, issue_url: &String) -> Option<GitHubIssue> {
+        if !issue_url.contains("github.com") {
+            return None;
+        }
+
+        let api_url = issue_url
+            .replace("github.com", "api.github.com/repos")
+            .replace("/pull/", "/pulls/");
+
+        match self.client.get(&api_url).send() {
+            Ok(resp) => match resp.json::<GitHubIssue>() {
+                Ok(data) => Some(data),
+                Err(e) => {
+                    eprintln!("Couldn't parse GitHub issue from {}", api_url);
+                    None
+                }
+            }
+            Err(e) => {
+                eprintln!("Couldn't get GitHub issue from {}: {}", api_url, e);
                 None
             }
         }

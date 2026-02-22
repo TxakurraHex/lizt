@@ -1,4 +1,4 @@
-use crate::cpe::{CpeEntry, CpePart, CpeSource, SystemCpe};
+use lizt_core::cpe::{CpeEntry, CpePart, CpeSource, SystemCpe};
 use crate::inventory::Source;
 use crate::runner::run;
 use tracing::error;

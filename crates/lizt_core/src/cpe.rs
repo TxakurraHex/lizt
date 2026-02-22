@@ -1,6 +1,13 @@
+use std::fmt;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString};
-use std::fmt;
+
+/// Represents a CPE determine from the running system
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystemCpe {
+    pub cpe: CpeEntry,
+    pub source: CpeSource,
+}
 
 /// Parsed CPE 2.3 entry from NVD dictionary or os-release
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,23 +52,10 @@ pub struct CpeMatch {
     pub version_end_excluding: Option<String>,
 }
 
-/// Represents a CPE determine from the running system
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SystemCpe {
-    pub cpe: CpeEntry,
-    pub source: CpeSource,
-}
-
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub enum CpeSource {
     OsInfo(String),         // Read from /etc/os-release, `uname -r`, etc.
     PackageManager(String), // rpm, dpkg, etc.
     ProcessMapping(String), // process -> package -> CPE
     FuzzyMatching(String),  // Fallback - NVD dictionary fuzzy search
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct SystemInventory {
-    pub sources: Vec<CpeSource>,
-    pub symbols: Vec<SystemCpe>,
 }

@@ -1,0 +1,10 @@
+[package]
+name = "lizt_symbols"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { workspace = true }
+regex = { workspace = true }
+lizt_core = { path = "../lizt_core" }
+lizt_rest = { path = "../lizt_rest" }
