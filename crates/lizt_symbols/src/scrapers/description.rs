@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::sync::OnceLock;
 use regex::Regex;
 use lizt_core::cve::Cve;

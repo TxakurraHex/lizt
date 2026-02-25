@@ -1,7 +1,10 @@
 [workspace]
 members = [
-    "crates/lizt_cpe", "crates/lizt_rest",
-    "crates/lizt_symbols", "crates/lizt_core",
+    "crates/lizt_cpe",
+    "crates/lizt_rest",
+    "crates/lizt_symbols",
+    "crates/lizt_core",
+    "crates/lizt_cli",
 ]
 resolver = "2"
 
@@ -15,6 +18,9 @@ env_logger = "0.11"
 time = { version = "0.3", features = ["serde", "macros"] }
 sqlx = { version = "0.8", features = ["postgres", "runtime-tokio", "time"] }
 tracing = "0.1"
-strum = { version = "0.27", features = ["derive"] }
+strum = { version = "0.28.0", features = ["derive"] }
 phf = { version = "0.13", features = ["macros"] }
 radix_trie = "0.3"
+log4rs = { version = "1", features = ["rolling_file_appender", "compound_policy", "size_trigger", "time_trigger", "fixed_window_roller", "gzip", ] }
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }

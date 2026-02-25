@@ -1,0 +1,15 @@
+[package]
+name = "lizt_cli"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "lizt"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+lizt_cpe = { path = "../lizt_cpe" }
+lizt_rest = { path = "../lizt_rest" }
+lizt_core = { path = "../lizt_core" }
+lizt_symbols = { path = "../lizt_symbols" }

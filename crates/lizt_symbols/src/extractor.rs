@@ -1,6 +1,6 @@
 use crate::symbol::Symbol;
 use std::collections::HashSet;
-use lizt_core::cve::{Cve, CveDescription, CveReference};
+use lizt_core::cve::Cve;
 
 pub trait Scraper {
     fn name(&self) -> &str;
@@ -24,7 +24,10 @@ impl CveSymbolExtractor {
         let mut seen: HashSet<String> = HashSet::new();
         for scraper in &self.scrapers {
             for cve in cves {
+                println!("Scraping {} with {}", cve.id, scraper.name());
                 let symbols = scraper.scrape(cve);
+
+                // De-duplicate
                 for symbol in symbols {
                     if seen.insert(format!("{}_{}", symbol.name, symbol.cve_id)) {
                         self.symbols.push(symbol);

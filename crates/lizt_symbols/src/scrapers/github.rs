@@ -58,7 +58,7 @@ fn scrape_diff(diff_string: String, commit_url: &String, cve_id: &String) -> Vec
             lines[lo..hi].join("\n")
         };
 
-        if let Some(cap) = c_func_regex.captures(&line) {
+        if let Some(cap) = c_func_regex.captures(line) {
             symbols.push(Symbol {
                 name: cap[2].to_string(),
                 source: source.clone(),
@@ -69,7 +69,7 @@ fn scrape_diff(diff_string: String, commit_url: &String, cve_id: &String) -> Vec
             });
         }
 
-        if let Some(cap) = python_def_regex.captures(&line) {
+        if let Some(cap) = python_def_regex.captures(line) {
             symbols.push(Symbol {
                 name: cap[1].to_string(),
                 source: source.clone(),
@@ -80,7 +80,7 @@ fn scrape_diff(diff_string: String, commit_url: &String, cve_id: &String) -> Vec
             });
         }
 
-        if let Some(cap) = java_method_regex.captures(&line) {
+        if let Some(cap) = java_method_regex.captures(line) {
             symbols.push(Symbol {
                 name: cap[1].to_string(),
                 source: source.clone(),
@@ -92,7 +92,7 @@ fn scrape_diff(diff_string: String, commit_url: &String, cve_id: &String) -> Vec
         }
 
         if line.starts_with("+") || line.starts_with("-") {
-            for cap in func_call_regex.captures_iter(&line) {
+            for cap in func_call_regex.captures_iter(line) {
                 let name = &cap[1];
                 if !IGNORED_KEYWORDS.contains(&name) {
                     symbols.push(Symbol {
@@ -110,7 +110,7 @@ fn scrape_diff(diff_string: String, commit_url: &String, cve_id: &String) -> Vec
     symbols
 }
 
-fn scrape_github_issue(issue: GitHubIssue, url: &String, cve_id: &String) -> Vec<Symbol> {
+fn scrape_github_issue(issue: GitHubIssue, url: &str, cve_id: &str) -> Vec<Symbol> {
     let text = format!("{} {}", issue.title.unwrap_or_default(), issue.body.unwrap_or_default());
     let mut symbols = scrape_description(&text, cve_id);
     let source = format!("github_issue: {}", url);

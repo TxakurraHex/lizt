@@ -17,15 +17,19 @@ impl Source for DpkgSource {
         out.lines()
             .filter_map(|line| {
                 let (product, version) = line.split_once('\t')?;
-                Some(SystemCpe {
-                    cpe: CpeEntry {
-                        part: CpePart::Application,
-                        vendor: String::new(),
-                        product: product.to_lowercase().replace("-", "_"),
-                        version: Some(version.to_string()),
-                    },
-                    source: CpeSource::PackageManager(self.name().to_string()),
-                })
+                if product.starts_with("python3-") || product.starts_with("python-") {
+                    None
+                } else {
+                    Some(SystemCpe {
+                        cpe: CpeEntry {
+                            part: CpePart::Application,
+                            vendor: String::new(),
+                            product: product.to_lowercase().replace("-", "_"),
+                            version: Some(version.to_string()),
+                        },
+                        source: CpeSource::PackageManager(self.name().to_string()),
+                    })
+                }
             })
             .collect()
     }

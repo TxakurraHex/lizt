@@ -20,7 +20,11 @@ pub struct CpeEntry {
 
 impl CpeEntry {
     pub fn match_string(&self) -> String {
-        format!("cpe:2.3:{}:{}:{}", self.part, self.vendor, self.product)
+        if let Some(version) = &self.version {
+            format!("cpe:2.3:{}:{}:{}:{}", self.part, self.vendor, self.product, version)
+        } else {
+            format!("cpe:2.3:{}:{}:{}", self.part, self.vendor, self.product)
+        }
     }
 }
 

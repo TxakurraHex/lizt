@@ -104,12 +104,25 @@ impl Inventory {
     }
 }
 /// Function to ensure Regex compilation only happens once
-fn version_cleanup_regex() -> &'static (Regex, Regex) {
-    static REGEXES: OnceLock<(Regex, Regex)> = OnceLock::new();
-    REGEXES.get_or_init(|| (
+fn version_cleanup_regexes() -> &'static [Regex] {
+    static REGEXES: OnceLock<Vec<Regex>> = OnceLock::new();
+    REGEXES.get_or_init(|| vec![
+        Regex::new(r"^\d+:").unwrap(),
+        Regex::new(r"^.*?really").unwrap(),
+        Regex::new(r"\+(dfsg|ds|repack|git|nmu|tests)[^-]*").unwrap(),
         Regex::new(r"[+~].*$").unwrap(),
-        Regex::new(r"-\d+$").unwrap(),
-    ))
+        Regex::new(r"ubuntu[\d.]+").unwrap(),
+        Regex::new(r"build\d+").unwrap(),
+        Regex::new(r"-\d+(\.\d+)*$").unwrap(),
+    ])
+}
+
+fn normalize_version(version: &str) -> String {
+    let mut v = version.to_string();
+    for re in version_cleanup_regexes() {
+        v = re.replace(&v, "").to_string();
+    }
+    v.trim_end_matches(['-', '.']).to_string()
 }
 fn normalize_system_cpe(cpe_item: &SystemCpe) -> SystemCpe {
     let product_lower = cpe_item.cpe.product.to_lowercase();
@@ -121,10 +134,11 @@ fn normalize_system_cpe(cpe_item: &SystemCpe) -> SystemCpe {
     }
 
     if let Some(version) = cpe_item.cpe.version.as_deref() {
-        let (re_suffix, re_digit) = version_cleanup_regex();
-        let cleaned = re_suffix.replace_all(version, "");
-        let cleaned = re_digit.replace_all(&cleaned, "");
-        new_item.cpe.version = Some(cleaned.into_owned());
+        println!("Original version: {}", version);
+        // let (re_suffix, re_digit) = version_cleanup_regex();
+        // let cleaned = re_suffix.replace_all(version, "");
+        // let cleaned = re_digit.replace_all(&cleaned, "");
+        new_item.cpe.version = Some(normalize_version(version));
     }
 
     new_item

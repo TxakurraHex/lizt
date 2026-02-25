@@ -1,6 +1,6 @@
 use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct GibHubIssue {
-    title: Option<String>,
-    body: Option<String>,
+    pub title: Option<String>,
+    pub body: Option<String>,
 }
