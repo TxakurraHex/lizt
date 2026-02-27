@@ -1,20 +1,26 @@
 use clap::{Parser, Subcommand};
-use std::collections::HashSet;
 use lizt_core::cve::Cve;
-use lizt_cpe::inventory::{Inventory, Source};
-use lizt_cpe::sources::dpkg::DpkgSource;
-use lizt_cpe::sources::linux_kernel::LinuxKernelSource;
-use lizt_cpe::sources::pip::PipSource;
-use lizt_cpe::sources::ubuntu::UbuntuSource;
-use lizt_rest::nvd_cpe::NvdProduct;
-use lizt_rest::rest::LiztRestClient;
-use lizt_symbols::extractor::{CveSymbolExtractor, Scraper};
-use lizt_symbols::scrapers::description::DescriptionScraper;
-use lizt_symbols::scrapers::github::GithubScraper;
-use lizt_symbols::symbol::Symbol;
+use lizt_core::symbol::Symbol;
+use lizt_inventory::inventory::{Inventory, Source};
+use lizt_inventory::sources::dpkg_inv_source::DpkgSource;
+use lizt_inventory::sources::linux_kernel_inv_source::LinuxKernelSource;
+use lizt_inventory::sources::pip_inv_source::PipSource;
+use lizt_inventory::sources::ubuntu_inv_source::UbuntuSource;
+use lizt_rest::cpe_resolver::CpeResolver;
+use lizt_rest::nvd::cpe_response::NvdProduct;
+use lizt_rest::rest_client::LiztRestClient;
+use lizt_symbols::scrapers::description_scraper::DescriptionScraper;
+use lizt_symbols::scrapers::github_scraper::GithubScraper;
+use lizt_symbols::symbol_extractor::{CveSymbolExtractor, Scraper};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Parser)]
-#[command(name = "lizt", version = "0.0.1", about = "Reachability-aware vulnerability analysis tool")]
+#[command(
+    name = "lizt",
+    version = "0.0.1",
+    about = "Reachability-aware vulnerability analysis tool"
+)]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
@@ -23,7 +29,11 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Start the pipeline from start to finish
-    Start,
+    Scan,
+    Reset {
+        #[arg(long)]
+        confirm: bool, // require --confirm to prevent accidentally clearing db
+    },
     /// Collect/refresh inventory for current system
     Inventory,
     /// Get symbols from CVEs
@@ -37,37 +47,60 @@ enum Commands {
     Configure,
 }
 
-fn main() {
-    let cli = Cli::parse();
-    match cli.command {
-        Commands::Start => {
-            let rest_client = get_rest_client();
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // lizt_db::connect().await?;
 
+    let cli = Cli::parse();
+
+    let rest_client: std::cell::OnceCell<Arc<LiztRestClient>> = std::cell::OnceCell::new();
+    let client = || rest_client.get_or_init(get_rest_client);
+
+    match cli.command {
+        Commands::Scan => {
             let inventory = get_inventory();
             for cpe in &inventory.items {
-                println!("{}", cpe.cpe.match_string());
+                println!("{}", cpe.cpe.to_cpe_string());
             }
 
-            let cpe_products  = get_products(inventory, &rest_client);
+            let resolver = CpeResolver::new(Arc::clone(client()));
+            let cpe_products = resolver.resolve_all(&inventory.items).await;
             for product in &cpe_products {
                 println!("{}", product.cpe.cpe_name);
             }
 
-            let cves = get_cves(cpe_products, &rest_client);
+            let cves = get_cves(cpe_products, client()).await;
             for cve in &cves {
                 println!("{}", cve.id);
             }
 
-            let symbols = extract_symbols(cves);
+            let symbols = extract_symbols(cves, Arc::clone(client())).await;
             eprintln!("Extracted {} symbols", symbols.len());
         }
-        Commands::Inventory => println!("Inventory"),
+        Commands::Reset { confirm } => {
+            if !confirm {
+                eprintln!("Pass --confirm to reset the database. WARNING - this is irreversible");
+                std::process::exit(1);
+            }
+        }
+        Commands::Inventory => {
+            let inventory = get_inventory();
+            for cpe in &inventory.items {
+                println!("{}", cpe.cpe.to_cpe_string());
+            }
+
+            let resolver = CpeResolver::new(Arc::clone(client()));
+            let cpe_products = resolver.resolve_all(&inventory.items).await;
+            for product in &cpe_products {
+                println!("{}", product.cpe.cpe_name);
+            }
+        }
         Commands::Symbols { cve_id } => {
             if let Some(cve_id) = cve_id {
-                let rest_client = get_rest_client();
-
                 println!("Symbols (CVE id: {})", cve_id);
-                let symbols = extract_symbols(get_cve_by_id(&cve_id, &rest_client));
+                let symbols =
+                    extract_symbols(get_cve_by_id(&cve_id, client()).await, Arc::clone(client()))
+                        .await;
 
                 eprintln!("Extracted {} symbols", symbols.len());
                 for symbol in &symbols {
@@ -76,19 +109,21 @@ fn main() {
             } else {
                 println!("Symbols (Current inventory)");
             }
-        },
+        }
         Commands::Rank => println!("Rank"),
         Commands::Configure => println!("Configure"),
     }
+
+    Ok(())
 }
 
-fn get_rest_client() -> LiztRestClient {
+fn get_rest_client() -> Arc<LiztRestClient> {
     let api_key = std::env::var("API_KEY").ok();
-    LiztRestClient::new(api_key)
+    Arc::new(LiztRestClient::new(api_key))
 }
 
 fn get_inventory() -> Inventory {
-    let sources : Vec<Box<dyn Source>> = vec![
+    let sources: Vec<Box<dyn Source>> = vec![
         Box::new(PipSource),
         Box::new(DpkgSource),
         Box::new(UbuntuSource),
@@ -101,53 +136,46 @@ fn get_inventory() -> Inventory {
     inventory
 }
 
-fn get_products(inventory: Inventory, rest_client: &LiztRestClient) -> Vec<NvdProduct> {
-    let mut cpe_products  = Vec::new();
-    for cpe_guess in inventory.items {
-        println!("Trying cpe guess: {}", cpe_guess.cpe.match_string());
-        if let Some(matches) = rest_client.request_cpe_data(&cpe_guess.cpe.match_string()) {
-            println!("Got {} product matches", matches.len());
-            cpe_products.extend(matches)
-        }
-    }
+async fn get_cves(cpe_products: Vec<NvdProduct>, rest_client: &LiztRestClient) -> Vec<Cve> {
+    let results = futures::future::join_all(
+        cpe_products
+            .iter()
+            .map(|product| rest_client.request_cve_data(&product.cpe.cpe_name)),
+    )
+    .await;
 
-    cpe_products
-}
-
-fn get_cves(cpe_products: Vec<NvdProduct>, rest_client: &LiztRestClient) -> Vec<Cve> {
-    let mut all_cves = HashSet::new();
-    for product in cpe_products {
-        println!("Trying requesting CVES from cpe: {:?}", product);
-        if let Some(vulnerabilities) = rest_client.request_cve_data(&product.cpe.cpe_name) {
-            println!("Found {} CVEs", vulnerabilities.len());
-            for vulnerability in vulnerabilities {
-                all_cves.insert(vulnerability.cve);
+    let mut all_cves: HashMap<String, Cve> = HashMap::new();
+    for vulnerabilities in results.into_iter().flatten() {
+        for vulnerability in vulnerabilities {
+            if let Ok(cve) = Cve::try_from(vulnerability.cve) {
+                all_cves.entry(cve.id.clone()).or_insert(cve);
             }
         }
     }
-
-    all_cves.into_iter().collect()
+    all_cves.into_values().collect()
 }
 
-fn get_cve_by_id(cve_id: &str, rest_client: &LiztRestClient) -> Vec<Cve> {
-    let mut cves = HashSet::new();
+async fn get_cve_by_id(cve_id: &str, rest_client: &LiztRestClient) -> Vec<Cve> {
+    let mut cves: HashMap<String, Cve> = HashMap::new();
     println!("Requesting CVE: {}", cve_id);
-    if let Some(vulnerabilities) = rest_client.request_cve_by_id(cve_id) {
-        println!("Found {} CVEs", cves.len());
+    if let Some(vulnerabilities) = rest_client.request_cve_by_id(cve_id).await {
+        println!("Found {} CVEs", vulnerabilities.len());
         for vulnerability in vulnerabilities {
-            cves.insert(vulnerability.cve);
+            if let Ok(cve) = Cve::try_from(vulnerability.cve) {
+                cves.entry(cve.id.clone()).or_insert(cve);
+            }
         }
     }
-    cves.into_iter().collect()
+    cves.into_values().collect()
 }
 
-fn extract_symbols(cves: Vec<Cve>) -> Vec<Symbol> {
-    let scrapers : Vec<Box<dyn Scraper>> = vec![
+async fn extract_symbols(cves: Vec<Cve>, client: Arc<LiztRestClient>) -> Vec<Symbol> {
+    let scrapers: Vec<Box<dyn Scraper>> = vec![
         Box::new(DescriptionScraper),
-        Box::new(GithubScraper),
+        Box::new(GithubScraper::new(client)),
     ];
     let mut extractor = CveSymbolExtractor::new(scrapers);
-    extractor.extract_symbols(&cves);
+    extractor.extract_symbols(&cves).await;
 
     extractor.symbols
 }

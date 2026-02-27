@@ -1,111 +1,104 @@
 # LIZT
 
-A comprehensive tool for:
-- Manufacturing and maintaining symbol maps extracted from CVE information
-- Detecting and interpreting environment configurations and characteristics, including installed kernel modules
-- Utilizing information collected by the tool to scan a process's runtime behavior, ranking any detected vulnerabilities with the added context information and reachability analysis.
-
-## Features
-
-- **NVD API Integration**: Fetches CVE data from the official National Vulnerability Database API
-- **Multi-Source Analysis**: Extracts symbols from:
-  - CVE descriptions
-  - GitHub commit diffs
-  - GitHub issues and pull requests
-  - Referenced security advisories
-- **Intelligent Symbol Detection**: Uses pattern matching to identify:
-  - Function definitions and declarations
-  - Function calls
-  - Method names
-  - API symbols
-- **Confidence Scoring**: Rates symbol findings as high, medium, or low confidence
-
-## Pre-Requisites
-- python3
-- PostgreSQL
-
-## Installation
-
-```bash
-pip install -r requirements.txt
-```
-
-Or manually install:
-```bash
-pip install requests
-```
-
-## Quick Start
+A reachability-aware vulnerability analysis tool for Linux systems. LIZT collects a software inventory, maps it to CPE entries, queries the NVD API for CVEs, extracts vulnerable function symbols from CVE data, and (planned) monitors process runtime behavior via eBPF to determine which vulnerabilities are actually reachable.
 
 ## How It Works
 
-### 1. CVE Description Analysis
-Extracts function names from CVE descriptions using patterns:
-- `function_name()` - Explicit function mentions
-- `` `identifier` `` - Backtick-quoted symbols (common in markdown)
-- Keywords like "vulnerable function", "affected function", etc.
-
-### 2. GitHub Commit Analysis
-Parses git diffs from linked commits to find:
-- Function definitions (C/C++, Python, Java, JavaScript)
-- Modified function signatures
-- Function calls in changed lines
-
-### 3. GitHub Issue/PR Analysis
-Extracts symbols from issue titles and descriptions where CVE fixes are discussed.
-
-### 4. Confidence Scoring
-- **High**: Symbol found in commit diff or explicitly mentioned with vulnerability keywords
-- **Medium**: Symbol found in function calls or description text
-- **Low**: Symbol found in backticks or generic mentions
-
-## Output Format
-
-The `analyze_cve()` method returns a dictionary with:
-
-```python
-{
-    'cve_id': 'CVE-2021-44228',
-    'description': 'Apache Log4j2 2.0-beta9 through 2.15.0...',
-    'published_date': '2021-12-10T10:15:09.353',
-    'references': ['https://github.com/apache/logging-log4j2/pull/608', ...],
-    'symbols': [
-        VulnerableSymbol(
-            name='lookup',
-            source='commit_diff: https://github.com/...',
-            confidence='high',
-            context='...',
-            cve_id='CVE-2021-44228'
-        ),
-        ...
-    ],
-    'symbol_count': 15
-}
+```
+System inventory  →  CPE matching  →  CVE lookup  →  Symbol extraction  →  (planned) eBPF runtime scan
 ```
 
-## VulnerableSymbol Object
+1. **Inventory** — collects installed packages and OS info from dpkg, pip, Ubuntu OS release data, and the Linux kernel version
+2. **CPE matching** — normalizes package names to CPE 2.3 format and validates them against the NVD CPE dictionary
+3. **CVE lookup** — queries the NVD CVE API using confirmed CPE names to find applicable vulnerabilities
+4. **Symbol extraction** — parses CVE descriptions, GitHub commit diffs, and GitHub issue/PR bodies to identify vulnerable function symbols
+5. **Ranking** — scores findings using CVSS score, KEV listing status, and (planned) runtime call confirmation
 
-Each symbol has the following attributes:
-- `name`: The function/symbol name
-- `source`: Where it was found (description, commit_diff, github_issue, etc.)
-- `confidence`: Rating (high, medium, low)
-- `context`: Surrounding text/code
-- `cve_id`: The CVE ID it belongs to
+## Prerequisites
 
-## Advanced Usage
+- Rust toolchain (edition 2024 / rustup stable)
+- PostgreSQL
+
+## Setup
+
+### 1. Configure environment variables
+
+```bash
+export DATABASE_URL="postgres://user:password@localhost/lizt"
+export API_KEY="your-nvd-api-key"       # Optional — enables 50 req/30s vs 5 req/30s
+```
+
+For the `reset` subcommand only:
+
+```bash
+export ADMINDB_URL="postgres://admin:password@localhost/postgres"
+export DATABASE_NAME="lizt"
+```
+
+### 2. Build
+
+```bash
+cargo build --release
+```
+
+### 3. Run
+
+```bash
+cargo run -p lizt_cli -- scan
+```
+
+The database schema is applied automatically on first connection.
+
+## CLI Subcommands
+
+| Subcommand | Description |
+|---|---|
+| `scan` | Run the full pipeline: inventory → CPE → CVE → symbol extraction |
+| `inventory` | Collect and display the current system software inventory |
+| `symbols --cve-id <ID>` | Extract vulnerable symbols for a specific CVE |
+| `rank` | Generate or update vulnerability rankings |
+| `reset --confirm` | Drop and recreate the database, then re-run migrations |
+| `configure` | Update tool configuration |
+
+## Symbol Extraction
+
+Symbols are extracted from three sources, each assigned a confidence level:
+
+| Source | Method | Confidence |
+|---|---|---|
+| CVE description | Function definitions (`foo()`), keyword phrases ("vulnerable function `foo`") | Medium / Low |
+| GitHub commit diff | Changed function signatures (C, Python, Java), function calls in modified lines | High / Medium |
+| GitHub issue / PR | Description and title text, same regex patterns as CVE description | Medium / Low |
+
+## Inventory Sources
+
+| Source | Data collected |
+|---|---|
+| `dpkg` | Debian/Ubuntu installed packages (`dpkg-query`) |
+| `pip` | Python packages (`pip list`) |
+| `ubuntu` | OS name and version (`/etc/os-release`) |
+| `linux_kernel` | Kernel version (`uname -r`) |
+
+## NVD API Rate Limits
+
+Requests are automatically throttled to stay within NVD limits:
+
+- **Without API key**: 5 requests per 30 seconds
+- **With `API_KEY`**: 50 requests per 30 seconds
+
+Get a free NVD API key at https://nvd.nist.gov/developers/request-an-api-key.
 
 ## Limitations
 
-- **Symbol Detection Accuracy**: Not all vulnerable symbols may be explicitly mentioned in CVE data
-- **Rate Limiting**: Without an API key, limited to 5 requests per 30 seconds
-- **GitHub Content**: Requires public GitHub repositories; cannot access private repos
-- **Language Support**: Pattern matching works best for C/C++, Python, Java, JavaScript
-- **False Positives**: May detect non-vulnerable functions mentioned in context
+- Inventory collection requires a Debian/Ubuntu system (dpkg source) or pip
+- Symbol detection accuracy depends on CVE data quality — not all vulnerable symbols are explicitly mentioned
+- GitHub scraping only works on public repositories
+- Symbol pattern matching targets C/C++, Python, and Java; other languages may produce false positives or misses
 
 ## License
 
-MIT License - Feel free to use and modify as needed.
+MIT License
 
 ## Disclaimer
 
-This tool is for security research and educational purposes. Always verify findings and use responsibly.
+This tool is intended for security research and defensive use. Always verify findings before acting on them.
