@@ -1,5 +1,5 @@
 [package]
-name = "lizt_cpe"
+name = "lizt_inventory"
 version = "0.1.0"
 edition = "2024"
 

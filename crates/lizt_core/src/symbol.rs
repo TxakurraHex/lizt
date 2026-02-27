@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub enum SymbolType {
@@ -9,7 +9,7 @@ pub enum SymbolType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]
-pub enum Confidence {
+pub enum SymbolConfidence {
     High,
     Medium,
     Low,
@@ -19,8 +19,8 @@ pub enum Confidence {
 pub struct Symbol {
     pub name: String,
     pub symbol_type: SymbolType,
-    pub confidence: Confidence,
+    pub confidence: SymbolConfidence,
     pub cve_id: String,
-    pub source: String,     // Description, git diff, etc.
+    pub source: String, // Description, git diff, etc.
     pub context: String,
 }

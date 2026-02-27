@@ -1,4 +1,3 @@
-pub mod cpe;
 pub mod inventory;
-pub mod runner;
+pub mod scraper_proc_runner;
 pub mod sources;

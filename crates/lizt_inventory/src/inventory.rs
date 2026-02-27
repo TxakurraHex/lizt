@@ -1,8 +1,8 @@
-use std::collections::HashSet;
-use std::sync::OnceLock;
+use lizt_core::inventory_item::{InventoryItem, InventorySource};
 use radix_trie::Trie;
 use regex::Regex;
-use lizt_core::cpe::{SystemCpe, CpeSource};
+use std::collections::HashSet;
+use std::sync::OnceLock;
 
 /// Trie to convert common libraries and binaries to known CPE values
 fn vendor_trie() -> &'static Trie<String, (&'static str, &'static str)> {
@@ -61,6 +61,7 @@ fn vendor_trie() -> &'static Trie<String, (&'static str, &'static str)> {
             ("php", ("php", "php")),
             ("ffmpeg", ("ffmpeg", "ffmpeg")),
             ("imagemagick", ("imagemagick", "imagemagick")),
+            ("g++", ("gnu", "g\\+\\+")),
         ];
         for (key, value) in mappings {
             trie.insert(key.to_string(), *value);
@@ -71,12 +72,12 @@ fn vendor_trie() -> &'static Trie<String, (&'static str, &'static str)> {
 
 pub trait Source {
     fn name(&self) -> &str;
-    fn collect(&self) -> Vec<SystemCpe>;
+    fn collect(&self) -> Vec<InventoryItem>;
 }
 
 pub struct Inventory {
     pub sources: Vec<Box<dyn Source>>,
-    pub items: Vec<SystemCpe>,
+    pub items: Vec<InventoryItem>,
 }
 
 impl Inventory {
@@ -92,29 +93,37 @@ impl Inventory {
         for source in &self.sources {
             for item in source.collect() {
                 let normalized = normalize_system_cpe(&item);
-                if seen.insert(normalized.cpe.match_string()) {
-                    self.items.push(normalized);
+                if seen.insert(normalized.cpe.to_cpe_string()) {
+                    self.items.push(normalized.clone());
                 }
+                // TODO: Add alternative versions with 'lib' prefix and any version suffixes removed
             }
         }
     }
 
-    pub fn filter_by_source(&self, source: &CpeSource) -> Vec<&SystemCpe> {
+    pub fn filter_by_source(&self, source: &InventorySource) -> Vec<&InventoryItem> {
         self.items.iter().filter(|i| &i.source == source).collect()
     }
 }
 /// Function to ensure Regex compilation only happens once
 fn version_cleanup_regexes() -> &'static [Regex] {
     static REGEXES: OnceLock<Vec<Regex>> = OnceLock::new();
-    REGEXES.get_or_init(|| vec![
-        Regex::new(r"^\d+:").unwrap(),
-        Regex::new(r"^.*?really").unwrap(),
-        Regex::new(r"\+(dfsg|ds|repack|git|nmu|tests)[^-]*").unwrap(),
-        Regex::new(r"[+~].*$").unwrap(),
-        Regex::new(r"ubuntu[\d.]+").unwrap(),
-        Regex::new(r"build\d+").unwrap(),
-        Regex::new(r"-\d+(\.\d+)*$").unwrap(),
-    ])
+    REGEXES.get_or_init(|| {
+        vec![
+            Regex::new(r"^\d+:").unwrap(),
+            Regex::new(r"^.*?really").unwrap(),
+            Regex::new(r"\+(dfsg|ds|repack|git|nmu|tests)[^-]*").unwrap(),
+            Regex::new(r"[+~].*$").unwrap(),
+            Regex::new(r"ubuntu[\d.]+").unwrap(),
+            Regex::new(r"build\d+").unwrap(),
+            Regex::new(r"-\d+(\.\d+)*$").unwrap(),
+        ]
+    })
+}
+
+fn libname_cleanup_regexes() -> &'static [Regex] {
+    static REGEXES: OnceLock<Vec<Regex>> = OnceLock::new();
+    REGEXES.get_or_init(|| vec![Regex::new(r"\d.*$").unwrap(), Regex::new(r"^lib").unwrap()])
 }
 
 fn normalize_version(version: &str) -> String {
@@ -124,7 +133,8 @@ fn normalize_version(version: &str) -> String {
     }
     v.trim_end_matches(['-', '.']).to_string()
 }
-fn normalize_system_cpe(cpe_item: &SystemCpe) -> SystemCpe {
+
+fn normalize_system_cpe(cpe_item: &InventoryItem) -> InventoryItem {
     let product_lower = cpe_item.cpe.product.to_lowercase();
     let mut new_item = cpe_item.clone();
 
@@ -134,10 +144,6 @@ fn normalize_system_cpe(cpe_item: &SystemCpe) -> SystemCpe {
     }
 
     if let Some(version) = cpe_item.cpe.version.as_deref() {
-        println!("Original version: {}", version);
-        // let (re_suffix, re_digit) = version_cleanup_regex();
-        // let cleaned = re_suffix.replace_all(version, "");
-        // let cleaned = re_digit.replace_all(&cleaned, "");
         new_item.cpe.version = Some(normalize_version(version));
     }
 

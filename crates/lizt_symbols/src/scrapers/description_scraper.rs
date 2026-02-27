@@ -1,8 +1,9 @@
-use std::sync::OnceLock;
-use regex::Regex;
+use async_trait::async_trait;
+use crate::symbol_extractor::Scraper;
 use lizt_core::cve::Cve;
-use crate::symbol::{Confidence, Symbol, SymbolType};
-use crate::extractor::Scraper;
+use lizt_core::symbol::{Symbol, SymbolConfidence, SymbolType};
+use regex::Regex;
+use std::sync::OnceLock;
 
 fn function_name_pattern_regexes() -> &'static (Regex, Regex, Regex, Regex, Regex) {
     static REGEXES: OnceLock<(Regex, Regex, Regex, Regex, Regex)> = OnceLock::new();
@@ -17,21 +18,17 @@ fn function_name_pattern_regexes() -> &'static (Regex, Regex, Regex, Regex, Rege
 
 pub struct DescriptionScraper;
 
+#[async_trait]
 impl Scraper for DescriptionScraper {
     fn name(&self) -> &str {
         "cve_description"
     }
 
-    fn scrape(&self, cve: &Cve) -> Vec<Symbol> {
-        let mut symbols = Vec::new();
-        if let Some(descriptions) = &cve.descriptions {
-            for description in descriptions {
-                if description.lang == "en" {
-                    symbols = scrape_description(description.value.as_str(), &cve.id);
-                }
-            }
-        }
-        symbols
+    async fn scrape(&self, cve: &Cve) -> Vec<Symbol> {
+        cve.descriptions
+            .as_deref()
+            .map(|desc| scrape_description(desc, &cve.id))
+            .unwrap_or_default()
     }
 }
 
@@ -43,7 +40,8 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
         backtick_regex,
         keyword_symbol_regex,
         symbol_keyword_regex,
-        kernel_prefix_regex) = function_name_pattern_regexes();
+        kernel_prefix_regex,
+    ) = function_name_pattern_regexes();
 
     for cap in parenthesis_regex.captures_iter(description) {
         let m = cap.get(0).unwrap();
@@ -51,7 +49,7 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
         symbols.push(Symbol {
             name: cap[1].to_string(),
             source: "description".into(),
-            confidence: Confidence::Medium,
+            confidence: SymbolConfidence::Medium,
             context,
             cve_id: cve_id.into(),
             symbol_type: SymbolType::Function,
@@ -64,7 +62,7 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
         symbols.push(Symbol {
             name: cap[1].to_string(),
             source: "description".into(),
-            confidence: Confidence::Low,
+            confidence: SymbolConfidence::Low,
             context,
             cve_id: cve_id.into(),
             symbol_type: SymbolType::Function,
@@ -77,7 +75,7 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
         symbols.push(Symbol {
             name: cap[2].to_string(),
             source: "description".into(),
-            confidence: Confidence::Low,
+            confidence: SymbolConfidence::Low,
             context,
             cve_id: cve_id.into(),
             symbol_type: SymbolType::Function,
@@ -90,7 +88,7 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
         symbols.push(Symbol {
             name: cap[1].to_string(),
             source: "description".into(),
-            confidence: Confidence::Low,
+            confidence: SymbolConfidence::Low,
             context,
             cve_id: cve_id.into(),
             symbol_type: SymbolType::Function,
@@ -103,7 +101,7 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
         symbols.push(Symbol {
             name: cap[1].to_string(),
             source: "description".into(),
-            confidence: Confidence::Low,
+            confidence: SymbolConfidence::Low,
             context,
             cve_id: cve_id.into(),
             symbol_type: SymbolType::Function,

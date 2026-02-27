@@ -1,6 +1,8 @@
-use lizt_core::cpe::{CpeEntry, CpePart, CpeSource, SystemCpe};
 use crate::inventory::Source;
-use crate::runner::run;
+use crate::scraper_proc_runner::run;
+use lizt_core::inventory_item::{
+    CpeEntry, CpePart, InventoryItem, InventoryItemConfidence, InventorySource,
+};
 use serde::Deserialize;
 use tracing::error;
 
@@ -17,7 +19,7 @@ impl Source for PipSource {
         "pip"
     }
 
-    fn collect(&self) -> Vec<SystemCpe> {
+    fn collect(&self) -> Vec<InventoryItem> {
         let Some(out) = run("python3 -m pip list --format=json 2>/dev/null") else {
             return vec![];
         };
@@ -25,14 +27,15 @@ impl Source for PipSource {
         match serde_json::from_str::<Vec<PipPackage>>(&out) {
             Ok(pkgs) => pkgs
                 .into_iter()
-                .map(|pkg| SystemCpe {
+                .map(|pkg| InventoryItem {
                     cpe: CpeEntry {
                         part: CpePart::Application,
                         vendor: String::new(),
                         product: pkg.name.to_lowercase().replace("-", "_"),
                         version: Some(pkg.version),
                     },
-                    source: CpeSource::PackageManager(self.name().to_string()),
+                    source: InventorySource::PackageManager(self.name().to_string()),
+                    cpe_confidence: InventoryItemConfidence::Low,
                 })
                 .collect(),
             Err(e) => {

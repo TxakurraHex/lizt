@@ -6,5 +6,8 @@ edition = "2024"
 [dependencies]
 serde = { workspace = true }
 regex = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true }
 lizt_core = { path = "../lizt_core" }
 lizt_rest = { path = "../lizt_rest" }

@@ -1,4 +1,2 @@
-pub mod symbol;
-pub mod extractor;
 pub mod scrapers;
-
+pub mod symbol_extractor;

@@ -1,11 +1,12 @@
-use std::sync::OnceLock;
-use regex::Regex;
+use crate::scrapers::description_scraper::scrape_description;
+use crate::symbol_extractor::Scraper;
+use async_trait::async_trait;
 use lizt_core::cve::Cve;
-use lizt_rest::nvd_cve::GitHubIssue;
-use lizt_rest::rest::LiztRestClient;
-use crate::extractor::Scraper;
-use crate::symbol::{Symbol, Confidence, SymbolType};
-use crate::scrapers::description::scrape_description;
+use lizt_core::symbol::{Symbol, SymbolConfidence, SymbolType};
+use lizt_rest::nvd::github_response::GitHubIssue;
+use lizt_rest::rest_client::LiztRestClient;
+use regex::Regex;
+use std::sync::{Arc, OnceLock};
 
 fn diff_regexes() -> &'static (Regex, Regex, Regex, Regex) {
     static REGEXES: OnceLock<(Regex, Regex, Regex, Regex)> = OnceLock::new();
@@ -16,26 +17,42 @@ fn diff_regexes() -> &'static (Regex, Regex, Regex, Regex) {
         Regex::new(r"\b([a-zA-Z_][a-zA-Z0-9_]{2,})\s*\(").unwrap(),
     ))
 }
-pub struct GithubScraper;
+pub struct GithubScraper {
+    client: Arc<LiztRestClient>,
+}
 
+impl GithubScraper {
+    pub fn new(client: Arc<LiztRestClient>) -> Self {
+        Self { client }
+    }
+}
+
+#[async_trait]
 impl Scraper for GithubScraper {
     fn name(&self) -> &str {
         "github"
     }
 
-    fn scrape(&self, cve: &Cve) -> Vec<Symbol> {
-        let mut symbols = vec![];
-        let api_key = std::env::var("API_KEY").ok();
-        let rest_client = LiztRestClient::new(api_key);
+    async fn scrape(&self, cve: &Cve) -> Vec<Symbol> {
+        let Some(references) = &cve.references else {
+            return vec![];
+        };
 
-        if let Some(references) = &cve.references {
-            for reference in references {
-                if let Some(git_diff) = rest_client.request_github_commit_diff(&reference.url) {
-                    symbols.extend(scrape_diff(git_diff, &reference.url, &cve.id));
-                }
-                if let Some(github_issue) = rest_client.request_github_issue(&reference.url) {
-                    symbols.extend(scrape_github_issue(github_issue, &reference.url, &cve.id));
-                }
+        let results = futures::future::join_all(references.iter().map(|url| async {
+            tokio::join!(
+                self.client.request_github_commit_diff(url),
+                self.client.request_github_issue(url)
+            )
+        }))
+        .await;
+
+        let mut symbols = vec![];
+        for (url, (diff, issue)) in references.iter().zip(results) {
+            if let Some(git_diff) = diff {
+                symbols.extend(scrape_diff(git_diff, url, &cve.id));
+            }
+            if let Some(github_issue) = issue {
+                symbols.extend(scrape_github_issue(github_issue, url, &cve.id));
             }
         }
         symbols
@@ -62,7 +79,7 @@ fn scrape_diff(diff_string: String, commit_url: &String, cve_id: &String) -> Vec
             symbols.push(Symbol {
                 name: cap[2].to_string(),
                 source: source.clone(),
-                confidence: Confidence::High,
+                confidence: SymbolConfidence::High,
                 context: context_range(2, 2),
                 cve_id: cve_id.into(),
                 symbol_type: SymbolType::Function,
@@ -73,7 +90,7 @@ fn scrape_diff(diff_string: String, commit_url: &String, cve_id: &String) -> Vec
             symbols.push(Symbol {
                 name: cap[1].to_string(),
                 source: source.clone(),
-                confidence: Confidence::High,
+                confidence: SymbolConfidence::High,
                 context: context_range(2, 2),
                 cve_id: cve_id.into(),
                 symbol_type: SymbolType::Function,
@@ -84,7 +101,7 @@ fn scrape_diff(diff_string: String, commit_url: &String, cve_id: &String) -> Vec
             symbols.push(Symbol {
                 name: cap[1].to_string(),
                 source: source.clone(),
-                confidence: Confidence::High,
+                confidence: SymbolConfidence::High,
                 context: context_range(2, 2),
                 cve_id: cve_id.into(),
                 symbol_type: SymbolType::Function,
@@ -98,7 +115,7 @@ fn scrape_diff(diff_string: String, commit_url: &String, cve_id: &String) -> Vec
                     symbols.push(Symbol {
                         name: name.to_string(),
                         source: source.clone(),
-                        confidence: Confidence::Medium,
+                        confidence: SymbolConfidence::Medium,
                         context: context_range(1, 1),
                         cve_id: cve_id.into(),
                         symbol_type: SymbolType::Function,
@@ -111,7 +128,11 @@ fn scrape_diff(diff_string: String, commit_url: &String, cve_id: &String) -> Vec
 }
 
 fn scrape_github_issue(issue: GitHubIssue, url: &str, cve_id: &str) -> Vec<Symbol> {
-    let text = format!("{} {}", issue.title.unwrap_or_default(), issue.body.unwrap_or_default());
+    let text = format!(
+        "{} {}",
+        issue.title.unwrap_or_default(),
+        issue.body.unwrap_or_default()
+    );
     let mut symbols = scrape_description(&text, cve_id);
     let source = format!("github_issue: {}", url);
     for symbol in &mut symbols {

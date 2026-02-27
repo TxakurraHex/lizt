@@ -1,10 +1,12 @@
-use crate::symbol::Symbol;
-use std::collections::HashSet;
+use async_trait::async_trait;
 use lizt_core::cve::Cve;
+use lizt_core::symbol::Symbol;
+use std::collections::HashSet;
 
-pub trait Scraper {
+#[async_trait]
+pub trait Scraper: Send + Sync {
     fn name(&self) -> &str;
-    fn scrape(&self, cve: &Cve) -> Vec<Symbol>;
+    async fn scrape(&self, cve: &Cve) -> Vec<Symbol>;
 }
 
 pub struct CveSymbolExtractor {
@@ -20,14 +22,13 @@ impl CveSymbolExtractor {
         }
     }
 
-    pub fn extract_symbols(&mut self, cves: &Vec<Cve>) {
+    pub async fn extract_symbols(&mut self, cves: &[Cve]) {
         let mut seen: HashSet<String> = HashSet::new();
         for scraper in &self.scrapers {
             for cve in cves {
                 println!("Scraping {} with {}", cve.id, scraper.name());
-                let symbols = scraper.scrape(cve);
+                let symbols = scraper.scrape(cve).await;
 
-                // De-duplicate
                 for symbol in symbols {
                     if seen.insert(format!("{}_{}", symbol.name, symbol.cve_id)) {
                         self.symbols.push(symbol);

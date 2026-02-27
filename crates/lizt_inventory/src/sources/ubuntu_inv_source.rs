@@ -1,5 +1,7 @@
-use lizt_core::cpe::{CpeEntry, CpePart, CpeSource, SystemCpe};
 use crate::inventory::Source;
+use lizt_core::inventory_item::{
+    CpeEntry, CpePart, InventoryItem, InventoryItemConfidence, InventorySource,
+};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
@@ -12,16 +14,17 @@ impl Source for UbuntuSource {
         "ubuntu"
     }
 
-    fn collect(&self) -> Vec<SystemCpe> {
+    fn collect(&self) -> Vec<InventoryItem> {
         let mut linux_inventory = Vec::new();
         let Ok(configs) = parse_os_release_file("/etc/os-release") else {
             return linux_inventory;
         };
 
         if let Some(os_release_info) = os_to_cpe(&configs) {
-            linux_inventory.push(SystemCpe {
+            linux_inventory.push(InventoryItem {
                 cpe: os_release_info,
-                source: CpeSource::OsInfo(self.name().to_string()),
+                source: InventorySource::OsInfo(self.name().to_string()),
+                cpe_confidence: InventoryItemConfidence::High,
             });
         } else {
             error!("Unable to parse configs from /etc/os-release file");
@@ -38,7 +41,7 @@ fn os_to_cpe(os_release_conf: &HashMap<String, String>) -> Option<CpeEntry> {
             product: "ubuntu_linux".to_string(),
             version: os_release_conf.get("VERSION_ID").cloned(),
         }),
-        _ => None
+        _ => None,
     }
 }
 
