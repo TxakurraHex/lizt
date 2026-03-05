@@ -17,24 +17,6 @@ pub struct CpeRow {
     pub cpe_confidence: String, // 'high', 'medium', 'low'
 }
 
-#[derive(Debug, FromRow)]
-pub struct CpeEventRow {
-    pub id: i64,
-    pub package_id: Uuid,
-    pub scan_id: Uuid,
-    pub event: String,
-    pub old_value: Option<String>,
-    pub occurred_at: DateTime<Utc>,
-}
-
-#[derive(Debug, FromRow)]
-pub struct CpeMatchRow {
-    pub id: i64,
-    pub package_id: String,
-    pub cve_id: String,
-    pub matched_at: DateTime<Utc>,
-}
-
 impl From<CpeRow> for CpeEntry {
     fn from(row: CpeRow) -> Self {
         CpeEntry {
