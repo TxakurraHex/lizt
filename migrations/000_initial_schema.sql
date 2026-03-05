@@ -18,16 +18,7 @@ CREATE TABLE cpes (
     cpe_confidence  TEXT NOT NULL DEFAULT 'low',
     first_seen      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_seen       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (name, product, vendor, version)
-);
-
-CREATE TABLE cpe_events (
-    id              BIGSERIAL PRIMARY KEY,
-    cpe_id          UUID NOT NULL REFERENCES cpes(id) ON DELETE CASCADE,
-    scan_id         UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
-    event           TEXT NOT NULL,  -- 'added', 'removed', 'version_changed'
-    old_value       TEXT,           -- previous version if version_changed
-    occurred_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    UNIQUE (name, product)
 );
 
 CREATE TABLE cves (
@@ -41,42 +32,6 @@ CREATE TABLE cves (
     first_seen      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_seen       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-CREATE TABLE cve_events (
-    id          BIGSERIAL PRIMARY KEY,
-    cve_id      TEXT NOT NULL REFERENCES cves(cve_id) ON DELETE CASCADE,
-    event       TEXT NOT NULL,  -- 'published', 'score_changed', 'cpe_added',
-                                -- 'cpe_removed', 'description_changed',
-                                -- 'kev_added', 'kev_removed'
-    old_value   TEXT,
-    new_value   TEXT,
-    occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE cve_cpes (
-    id                      BIGSERIAL PRIMARY KEY,
-    cve_id                  TEXT NOT NULL REFERENCES cves(cve_id) ON DELETE CASCADE,
-    cpe                     TEXT NOT NULL,  -- raw CPE string from NVD endpoint
-    vulnerable              BOOLEAN NOT NULL DEFAULT TRUE,
-    version_start_including TEXT,
-    version_start_excluding TEXT,
-    version_end_including   TEXT,
-    version_end_excluding   TEXT
-);
-
-CREATE INDEX ON cve_cpes(cpe);
-CREATE INDEX ON cve_cpes(cve_id);
-
-CREATE TABLE cpe_matches (
-    id                  BIGSERIAL PRIMARY KEY,
-    cpe_id              UUID NOT NULL REFERENCES cpes(id) ON DELETE CASCADE,
-    cve_id              TEXT NOT NULL REFERENCES cves(cve_id) ON DELETE CASCADE,
-    matched_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    scan_id             UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
-    UNIQUE (scan_id, cpe_id, cve_id)
-);
-
-CREATE INDEX ON cpe_matches(cve_id);
 
 CREATE TABLE cve_symbols (
     id          BIGSERIAL PRIMARY KEY,
@@ -125,14 +80,8 @@ CREATE INDEX ON findings(rank_score DESC);
 CREATE INDEX ON findings(cve_id);
 
 CREATE TABLE kev (
-    cve_id      TEXT PRIMARY KEY REFERENCES cves(cve_id),
+    cve_id      TEXT PRIMARY KEY REFERENCES cves(cve_id) ON DELETE CASCADE,
     vendor      TEXT,
     product     TEXT,
     added_at    DATE
-);
-
-CREATE TABLE sync_state (
-    key         TEXT PRIMARY KEY,
-    value       TEXT NOT NULL,
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
