@@ -1,8 +1,6 @@
 use crate::inventory::Source;
 use crate::scraper_proc_runner::run;
-use lizt_core::inventory_item::{
-    CpeEntry, CpePart, InventoryItem, InventoryItemConfidence, InventorySource,
-};
+use lizt_core::cpe::{Cpe, CpeEntry, CpePart, InventoryItemConfidence, InventorySource};
 use serde::Deserialize;
 use tracing::error;
 
@@ -19,7 +17,7 @@ impl Source for PipSource {
         "pip"
     }
 
-    fn collect(&self) -> Vec<InventoryItem> {
+    fn collect(&self) -> Vec<CpeEntry> {
         let Some(out) = run("python3 -m pip list --format=json 2>/dev/null") else {
             return vec![];
         };
@@ -27,8 +25,9 @@ impl Source for PipSource {
         match serde_json::from_str::<Vec<PipPackage>>(&out) {
             Ok(pkgs) => pkgs
                 .into_iter()
-                .map(|pkg| InventoryItem {
-                    cpe: CpeEntry {
+                .map(|pkg| CpeEntry {
+                    cpe: Cpe {
+                        name: pkg.name.clone(),
                         part: CpePart::Application,
                         vendor: String::new(),
                         product: pkg.name.to_lowercase().replace("-", "_"),

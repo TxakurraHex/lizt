@@ -4,8 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+lizt_core = { path = "../lizt_core" }
+
 sqlx = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true }
-
-lizt_core = { path = "../lizt_core" }
+futures = { workspace = true }
+log = { workspace = true }
+rust_decimal = { workspace = true }

@@ -4,22 +4,23 @@ use strum::{Display, EnumString};
 
 /// Represents a CPE determine from the running system
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InventoryItem {
-    pub cpe: CpeEntry,
+pub struct CpeEntry {
+    pub cpe: Cpe,
     pub source: InventorySource,
     pub cpe_confidence: InventoryItemConfidence,
 }
 
 /// Parsed CPE 2.3 entry from NVD dictionary or os-release
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct CpeEntry {
+pub struct Cpe {
+    pub name: String,
     pub part: CpePart, // 'a' = application, 'o' = OS, 'h' = hardware
     pub vendor: String,
     pub product: String,
     pub version: Option<String>,
 }
 
-impl CpeEntry {
+impl Cpe {
     pub fn to_cpe_string(&self) -> String {
         if let Some(version) = &self.version {
             format!(
@@ -33,7 +34,8 @@ impl CpeEntry {
     pub fn from_cpe_string(criteria: &str) -> Self {
         let parts: Vec<&str> = criteria.split(':').collect();
 
-        CpeEntry {
+        Cpe {
+            name: parts.get(4).unwrap_or(&"").to_string(),
             part: parts
                 .get(2)
                 .map(|p| match *p {

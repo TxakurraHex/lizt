@@ -1,8 +1,6 @@
 use crate::inventory::Source;
 use crate::scraper_proc_runner::run;
-use lizt_core::inventory_item::{
-    CpeEntry, CpePart, InventoryItem, InventoryItemConfidence, InventorySource,
-};
+use lizt_core::cpe::{Cpe, CpeEntry, CpePart, InventoryItemConfidence, InventorySource};
 use tracing::error;
 
 pub struct LinuxKernelSource;
@@ -12,11 +10,11 @@ impl Source for LinuxKernelSource {
         "linux-kernel"
     }
 
-    fn collect(&self) -> Vec<InventoryItem> {
+    fn collect(&self) -> Vec<CpeEntry> {
         let mut linux_kernel_inventory = Vec::new();
 
         if let Some(kernel_info) = get_kernel_info() {
-            linux_kernel_inventory.push(InventoryItem {
+            linux_kernel_inventory.push(CpeEntry {
                 cpe: kernel_info,
                 source: InventorySource::OsInfo(self.name().to_string()),
                 cpe_confidence: InventoryItemConfidence::High,
@@ -28,10 +26,11 @@ impl Source for LinuxKernelSource {
         linux_kernel_inventory
     }
 }
-fn get_kernel_info() -> Option<CpeEntry> {
+fn get_kernel_info() -> Option<Cpe> {
     let raw = run("uname -r")?;
     let kernel_version = raw.trim().split('-').next()?;
-    Some(CpeEntry {
+    Some(Cpe {
+        name: "linux_kernel".to_string(),
         part: CpePart::OperatingSystem,
         vendor: "linux".to_string(),
         product: "linux_kernel".to_string(),

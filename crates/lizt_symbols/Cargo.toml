@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-serde = { workspace = true }
+lizt_core = { path = "../lizt_core" }
+lizt_rest = { path = "../lizt_rest" }
+
 regex = { workspace = true }
 async-trait = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }
-lizt_core = { path = "../lizt_core" }
-lizt_rest = { path = "../lizt_rest" }
+log = { workspace = true }

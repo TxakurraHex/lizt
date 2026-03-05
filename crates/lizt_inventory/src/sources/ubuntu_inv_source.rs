@@ -1,7 +1,5 @@
 use crate::inventory::Source;
-use lizt_core::inventory_item::{
-    CpeEntry, CpePart, InventoryItem, InventoryItemConfidence, InventorySource,
-};
+use lizt_core::cpe::{Cpe, CpeEntry, CpePart, InventoryItemConfidence, InventorySource};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
@@ -14,14 +12,14 @@ impl Source for UbuntuSource {
         "ubuntu"
     }
 
-    fn collect(&self) -> Vec<InventoryItem> {
+    fn collect(&self) -> Vec<CpeEntry> {
         let mut linux_inventory = Vec::new();
         let Ok(configs) = parse_os_release_file("/etc/os-release") else {
             return linux_inventory;
         };
 
         if let Some(os_release_info) = os_to_cpe(&configs) {
-            linux_inventory.push(InventoryItem {
+            linux_inventory.push(CpeEntry {
                 cpe: os_release_info,
                 source: InventorySource::OsInfo(self.name().to_string()),
                 cpe_confidence: InventoryItemConfidence::High,
@@ -33,9 +31,10 @@ impl Source for UbuntuSource {
         linux_inventory
     }
 }
-fn os_to_cpe(os_release_conf: &HashMap<String, String>) -> Option<CpeEntry> {
+fn os_to_cpe(os_release_conf: &HashMap<String, String>) -> Option<Cpe> {
     match os_release_conf.get("NAME")?.to_lowercase().as_str() {
-        "ubuntu" => Some(CpeEntry {
+        "ubuntu" => Some(Cpe {
+            name: "ubuntu_linux".to_string(),
             part: CpePart::OperatingSystem,
             vendor: "canonical".to_string(),
             product: "ubuntu_linux".to_string(),

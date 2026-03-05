@@ -1,23 +1,14 @@
 use chrono::{DateTime, Utc};
-use lizt_core::inventory_item::{
-    CpeEntry, InventoryItem, InventoryItemConfidence, InventorySource,
-};
+use lizt_core::cpe::{Cpe, CpeEntry, InventoryItemConfidence, InventorySource};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug)]
-pub struct NewInventoryItem {
-    pub name: String,
-    pub version: Option<String>,
-    pub source: String,
-    pub cpe: Option<String>,
-    pub cpe_confidence: String,
-}
-
 #[derive(Debug, FromRow)]
-pub struct InventoryItemRow {
+pub struct CpeRow {
     pub id: Uuid,
     pub name: String,
+    pub vendor: Option<String>,
+    pub product: String,
     pub version: Option<String>,
     pub source: String,
     pub cpe: Option<String>,
@@ -27,7 +18,7 @@ pub struct InventoryItemRow {
 }
 
 #[derive(Debug, FromRow)]
-pub struct InventoryEventRow {
+pub struct CpeEventRow {
     pub id: i64,
     pub package_id: Uuid,
     pub scan_id: Uuid,
@@ -44,22 +35,10 @@ pub struct CpeMatchRow {
     pub matched_at: DateTime<Utc>,
 }
 
-impl NewInventoryItem {
-    pub fn from_item(item: &InventoryItem) -> Self {
-        NewInventoryItem {
-            name: item.cpe.product.clone(),
-            version: item.cpe.version.clone(),
-            source: item.source.to_string(),
-            cpe: Some(item.cpe.to_cpe_string()),
-            cpe_confidence: item.cpe_confidence.to_string(),
-        }
-    }
-}
-
-impl From<InventoryItemRow> for InventoryItem {
-    fn from(row: InventoryItemRow) -> Self {
-        InventoryItem {
-            cpe: CpeEntry::from_cpe_string(row.cpe.as_deref().unwrap()),
+impl From<CpeRow> for CpeEntry {
+    fn from(row: CpeRow) -> Self {
+        CpeEntry {
+            cpe: Cpe::from_cpe_string(row.cpe.as_deref().unwrap()),
             source: row
                 .source
                 .parse::<InventorySource>()

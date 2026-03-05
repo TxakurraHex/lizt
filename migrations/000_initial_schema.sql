@@ -7,21 +7,23 @@ CREATE TABLE scans (
     status      TEXT NOT NULL DEFAULT 'running' -- 'running', 'complete', 'failed'
 );
 
-CREATE TABLE inventory (
+CREATE TABLE cpes (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name            TEXT NOT NULL,
+    product         TEXT NOT NULL,
+    vendor          TEXT,
     version         TEXT,
     source          TEXT NOT NULL,
     cpe             TEXT,           -- computed CPE string, nullable until resolved
     cpe_confidence  TEXT NOT NULL DEFAULT 'low',
     first_seen      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_seen       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (name, version, source)
+    UNIQUE (name, product, vendor, version)
 );
 
-CREATE TABLE inventory_events (
+CREATE TABLE cpe_events (
     id              BIGSERIAL PRIMARY KEY,
-    inventory_id    UUID NOT NULL REFERENCES inventory(id) ON DELETE CASCADE,
+    cpe_id          UUID NOT NULL REFERENCES cpes(id) ON DELETE CASCADE,
     scan_id         UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
     event           TEXT NOT NULL,  -- 'added', 'removed', 'version_changed'
     old_value       TEXT,           -- previous version if version_changed
@@ -31,7 +33,7 @@ CREATE TABLE inventory_events (
 CREATE TABLE cves (
     cve_id          TEXT PRIMARY KEY,
     description     TEXT,
-    references      TEXT[],
+    refs            TEXT[],
     cvss_score      NUMERIC(4,2),
     cvss_vector     TEXT,
     cvss_version    TEXT,
@@ -67,41 +69,44 @@ CREATE INDEX ON cve_cpes(cve_id);
 
 CREATE TABLE cpe_matches (
     id                  BIGSERIAL PRIMARY KEY,
-    inventory_item_id   UUID NOT NULL REFERENCES inventory(id) ON DELETE CASCADE,
+    cpe_id              UUID NOT NULL REFERENCES cpes(id) ON DELETE CASCADE,
     cve_id              TEXT NOT NULL REFERENCES cves(cve_id) ON DELETE CASCADE,
     matched_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     scan_id             UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
-    UNIQUE (package_id, cve_id)
+    UNIQUE (scan_id, cpe_id, cve_id)
 );
 
 CREATE INDEX ON cpe_matches(cve_id);
 
 CREATE TABLE cve_symbols (
-    id         BIGSERIAL PRIMARY KEY,
-    cve_id     TEXT NOT NULL REFERENCES cves (cve_id) ON DELETE CASCADE,
-    symbol     TEXT NOT NULL,
-    source     TEXT NOT NULL,
-    confidence NUMERIC(4, 3),
-    UNIQUE (cve_id, symbol)
+    id          BIGSERIAL PRIMARY KEY,
+    cve_id      TEXT NOT NULL REFERENCES cves(cve_id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    source      TEXT NOT NULL,
+    confidence  TEXT NOT NULL,
+    symbol_type TEXT NOT NULL,
+    context     TEXT NOT NULL,
+    UNIQUE (cve_id, name)
 );
 
 CREATE INDEX ON cve_symbols(cve_id);
-CREATE INDEX ON cve_symbols(symbol);
+CREATE INDEX ON cve_symbols(name);
 
 CREATE TABLE symbol_observations (
     id              BIGSERIAL PRIMARY KEY,
-    symbol          TEXT NOT NULL,
+    cve_symbol_id   BIGINT NOT NULL REFERENCES cve_symbols(id) ON DELETE CASCADE,
     pid             INT,
     process_name    TEXT,
     observed_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     call_count      BIGINT NOT NULL DEFAULT 1
 );
 
-CREATE INDEX ON symbol_observations(symbol);
+CREATE INDEX ON symbol_observations(cve_symbol_id);
 
 CREATE TABLE findings (
     id                  BIGSERIAL PRIMARY KEY,
-    inventory_item_id   UUID NOT NULL REFERENCES inventory(id) ON DELETE CASCADE,
+    scan_id             UUID NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+    cpe_id              UUID NOT NULL REFERENCES cpes(id) ON DELETE CASCADE,
     cve_id              TEXT NOT NULL REFERENCES cves(cve_id) ON DELETE CASCADE,
 
     cpe_match           BOOLEAN NOT NULL DEFAULT false,
@@ -114,7 +119,7 @@ CREATE TABLE findings (
 
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (scan_id, package_id, cve_id)
+    UNIQUE (scan_id, cpe_id, cve_id)
 );
 CREATE INDEX ON findings(rank_score DESC);
 CREATE INDEX ON findings(cve_id);

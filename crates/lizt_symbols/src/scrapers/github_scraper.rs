@@ -34,7 +34,7 @@ impl Scraper for GithubScraper {
     }
 
     async fn scrape(&self, cve: &Cve) -> Vec<Symbol> {
-        let Some(references) = &cve.references else {
+        let Some(references) = &cve.refs else {
             return vec![];
         };
 

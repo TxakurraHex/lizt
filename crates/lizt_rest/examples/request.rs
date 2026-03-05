@@ -5,7 +5,8 @@ use lizt_rest::rest_client::LiztRestClient;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = std::env::var("NVD_API_KEY").ok();
-    let rest_client = LiztRestClient::new(api_key);
+    let github_token = std::env::var("GITHUB_TOKEN").ok();
+    let rest_client = LiztRestClient::new(api_key, github_token);
     let match_string = String::from("cpe:2.3:a:openssl:openssl:3.0.19");
     if let Some(cpe_matches) = cpe_match(&rest_client, &match_string).await {
         for product in cpe_matches {
@@ -21,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn cpe_match(client: &LiztRestClient, cpe_match: &String) -> Option<Vec<NvdCpeItem>> {
+async fn cpe_match(client: &LiztRestClient, cpe_match: &str) -> Option<Vec<NvdCpeItem>> {
     Some(
         client
             .request_cpe_data(cpe_match)
@@ -30,16 +31,6 @@ async fn cpe_match(client: &LiztRestClient, cpe_match: &String) -> Option<Vec<Nv
             .map(|f| f.cpe)
             .collect(),
     )
-    // match client.request_cpe_data(cpe_match) {
-    //     Some(cpe_data) => {
-    //         let products = cpe_data.into_iter().map(|cpe| cpe.cpe).collect();
-    //         return Some(products);
-    //     }
-    //     None => {
-    //         eprintln!("No match");
-    //     }
-    // }
-    // None
 }
 
 async fn cve_results(client: &LiztRestClient, cpe_name: &String) -> Option<Vec<NvdCveItem>> {
@@ -51,14 +42,4 @@ async fn cve_results(client: &LiztRestClient, cpe_name: &String) -> Option<Vec<N
             .map(|f| f.cve)
             .collect(),
     )
-    // match client.request_cve_data(cpe_name) {
-    //     Some(cve_data) => {
-    //         let cves = cve_data.into_iter().map(|cve| cve.cve).collect();
-    //         return Some(cves);
-    //     }
-    //     None => {
-    //         eprintln!("No CVEs resulting from {}", cpe_name);
-    //     }
-    // }
-    // None
 }

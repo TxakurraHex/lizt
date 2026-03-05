@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
-use lizt_core::cve::{CpeMatch, Cve, CvssInfo};
-use lizt_core::inventory_item::CpeEntry;
+use lizt_core::cpe::Cpe;
+use lizt_core::cve::{Cve, CveCpe};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
@@ -62,7 +63,7 @@ pub struct NvdCvssEntry {
 pub struct NvdCvssData {
     pub version: String,
     #[serde(rename = "baseScore")]
-    pub base_score: f64,
+    pub base_score: Decimal,
     #[serde(rename = "vectorString")]
     pub vector_string: String,
 }
@@ -93,38 +94,53 @@ pub struct NvdCpeMatch {
     pub version_end_excluding: Option<String>,
 }
 
-impl TryFrom<NvdCveItem> for Cve {
-    type Error = chrono::ParseError;
-
-    fn try_from(value: NvdCveItem) -> Result<Self, Self::Error> {
-        Ok(Cve {
+impl From<NvdCveItem> for Cve {
+    fn from(value: NvdCveItem) -> Self {
+        let cvss = value.metrics.and_then(|m| m.best_cvss());
+        Cve {
             id: value.id,
             descriptions: value
                 .descriptions
                 .and_then(|ds| ds.into_iter().find(|d| d.lang == "en"))
                 .map(|d| d.value),
-            published: Some(DateTime::parse_from_rfc3339(&value.published)?.with_timezone(&Utc)),
-            references: value
+            published: DateTime::parse_from_rfc3339(&value.published)
+                .ok()
+                .map(|dt| dt.with_timezone(&Utc)),
+            refs: value
                 .references
                 .map(|refs| refs.into_iter().map(|r| r.url).collect()),
-            cvss: value.metrics.and_then(|m| m.best_cvss()),
+            cvss_score: cvss.as_ref().map(|c| c.score),
+            cvss_vector: cvss.as_ref().map(|c| c.vector.clone()),
+            cvss_version: cvss.as_ref().map(|c| c.version.clone()),
             cpes: value.configurations.map(|configs| {
                 configs
                     .into_iter()
                     .flat_map(|c| c.nodes)
                     .flat_map(|n| n.cpe_match)
-                    .map(|m| CpeMatch {
-                        cpe_entry: CpeEntry::from_cpe_string(m.criteria.as_str()),
-                        vulnerable: m.vulnerable,
-                        version_start_including: m.version_start_including,
-                        version_start_excluding: m.version_start_excluding,
-                        version_end_including: m.version_end_including,
-                        version_end_excluding: m.version_end_excluding,
-                    })
+                    .map(CveCpe::from)
                     .collect()
             }),
-        })
+        }
     }
+}
+
+impl From<NvdCpeMatch> for CveCpe {
+    fn from(value: NvdCpeMatch) -> Self {
+        CveCpe {
+            cpe: Cpe::from_cpe_string(value.criteria.as_str()),
+            vulnerable: value.vulnerable,
+            version_start_including: value.version_start_including,
+            version_start_excluding: value.version_start_excluding,
+            version_end_including: value.version_end_including,
+            version_end_excluding: value.version_end_excluding,
+        }
+    }
+}
+
+pub struct CvssInfo {
+    pub score: Decimal,
+    pub vector: String,
+    pub version: String,
 }
 
 impl NvdMetrics {

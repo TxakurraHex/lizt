@@ -8,12 +8,15 @@ name = "lizt"
 path = "src/main.rs"
 
 [dependencies]
-futures = { workspace = true }
-clap = { workspace = true }
-tokio = { workspace = true }
-sqlx = { workspace = true }
 lizt_inventory = { path = "../lizt_inventory" }
 lizt_rest = { path = "../lizt_rest" }
 lizt_core = { path = "../lizt_core" }
 lizt_symbols = { path = "../lizt_symbols" }
 lizt_db = { path = "../lizt_db" }
+
+futures = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+sqlx = { workspace = true }
+log4rs = { workspace = true }
+log = { workspace = true }

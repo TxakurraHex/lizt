@@ -1,19 +1,27 @@
-pub mod findings;
-pub mod packages;
-pub mod rows;
-pub mod scans;
-pub mod symbols;
+extern crate core;
 
+pub mod cpe_tables;
+pub mod cve_tables;
+pub mod findings_table;
+pub mod rows;
+pub mod scans_table;
+pub mod symbol_tables;
+
+use log::debug;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 
 pub async fn connect() -> Result<PgPool, Box<dyn std::error::Error>> {
+    let db_url = std::env::var("DATABASE_URL")?;
+    debug!("Connecting to database with URL: {db_url}");
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect(&std::env::var("DATABASE_URL")?)
+        .connect(&db_url)
         .await?;
 
+    debug!("Running migrations");
     sqlx::migrate!("../../migrations").run(&pool).await?;
+    debug!("Done");
 
     Ok(pool)
 }

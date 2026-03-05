@@ -1,4 +1,4 @@
-use lizt_core::inventory_item::{InventoryItem, InventorySource};
+use lizt_core::cpe::{CpeEntry, InventorySource};
 use radix_trie::Trie;
 use regex::Regex;
 use std::collections::HashSet;
@@ -72,12 +72,12 @@ fn vendor_trie() -> &'static Trie<String, (&'static str, &'static str)> {
 
 pub trait Source {
     fn name(&self) -> &str;
-    fn collect(&self) -> Vec<InventoryItem>;
+    fn collect(&self) -> Vec<CpeEntry>;
 }
 
 pub struct Inventory {
     pub sources: Vec<Box<dyn Source>>,
-    pub items: Vec<InventoryItem>,
+    pub items: Vec<CpeEntry>,
 }
 
 impl Inventory {
@@ -96,12 +96,18 @@ impl Inventory {
                 if seen.insert(normalized.cpe.to_cpe_string()) {
                     self.items.push(normalized.clone());
                 }
-                // TODO: Add alternative versions with 'lib' prefix and any version suffixes removed
+                // Add alternative versions with 'lib' prefix and any version suffixes removed
+                let alt_items = create_alt_items(&normalized);
+                for item in alt_items {
+                    if seen.insert(item.cpe.to_cpe_string()) {
+                        self.items.push(item);
+                    }
+                }
             }
         }
     }
 
-    pub fn filter_by_source(&self, source: &InventorySource) -> Vec<&InventoryItem> {
+    pub fn filter_by_source(&self, source: &InventorySource) -> Vec<&CpeEntry> {
         self.items.iter().filter(|i| &i.source == source).collect()
     }
 }
@@ -121,11 +127,6 @@ fn version_cleanup_regexes() -> &'static [Regex] {
     })
 }
 
-fn libname_cleanup_regexes() -> &'static [Regex] {
-    static REGEXES: OnceLock<Vec<Regex>> = OnceLock::new();
-    REGEXES.get_or_init(|| vec![Regex::new(r"\d.*$").unwrap(), Regex::new(r"^lib").unwrap()])
-}
-
 fn normalize_version(version: &str) -> String {
     let mut v = version.to_string();
     for re in version_cleanup_regexes() {
@@ -134,8 +135,8 @@ fn normalize_version(version: &str) -> String {
     v.trim_end_matches(['-', '.']).to_string()
 }
 
-fn normalize_system_cpe(cpe_item: &InventoryItem) -> InventoryItem {
-    let product_lower = cpe_item.cpe.product.to_lowercase();
+fn normalize_system_cpe(cpe_item: &CpeEntry) -> CpeEntry {
+    let product_lower = cpe_item.cpe.product.to_lowercase().replace("+", "\\+");
     let mut new_item = cpe_item.clone();
 
     if let Some((vendor, product)) = vendor_trie().get_ancestor_value(&product_lower) {
@@ -148,4 +149,26 @@ fn normalize_system_cpe(cpe_item: &InventoryItem) -> InventoryItem {
     }
 
     new_item
+}
+
+fn create_alt_items(cpe_item: &CpeEntry) -> Vec<CpeEntry> {
+    let mut items = Vec::new();
+    let product_name = cpe_item.cpe.product.to_string();
+
+    if let Some(no_lib) = product_name.strip_prefix("lib") {
+        let mut new_item = cpe_item.clone();
+        new_item.cpe.product = no_lib.to_string();
+        items.push(new_item);
+    }
+
+    static REGEXES: OnceLock<Regex> = OnceLock::new();
+    let regex = REGEXES.get_or_init(|| Regex::new(r"\d.*$").unwrap());
+    let no_digits = regex.replace(&product_name, "").to_string();
+    if no_digits.len() < product_name.len() {
+        let mut new_item = cpe_item.clone();
+        new_item.cpe.product = no_digits.to_string();
+        items.push(new_item);
+    }
+
+    items
 }

@@ -1,4 +1,4 @@
-use lizt_core::inventory_item::CpeEntry;
+use lizt_core::cpe::Cpe;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -26,8 +26,8 @@ pub struct NvdCpeTitle {
     pub lang: String,
 }
 
-impl From<NvdCpeItem> for CpeEntry {
+impl From<NvdCpeItem> for Cpe {
     fn from(item: NvdCpeItem) -> Self {
-        CpeEntry::from_cpe_string(&item.cpe_name)
+        Cpe::from_cpe_string(&item.cpe_name)
     }
 }

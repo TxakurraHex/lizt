@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
+use strum::{Display, EnumString};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq, Display, EnumString)]
+#[strum(serialize_all = "lowercase")]
 pub enum SymbolType {
     Function,
     Struct,
@@ -8,7 +10,8 @@ pub enum SymbolType {
     Unknown,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq, Display, EnumString)]
+#[strum(serialize_all = "lowercase")]
 pub enum SymbolConfidence {
     High,
     Medium,

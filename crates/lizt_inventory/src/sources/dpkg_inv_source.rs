@@ -1,8 +1,6 @@
 use crate::inventory::Source;
 use crate::scraper_proc_runner::run;
-use lizt_core::inventory_item::{
-    CpeEntry, CpePart, InventoryItem, InventoryItemConfidence, InventorySource,
-};
+use lizt_core::cpe::{Cpe, CpeEntry, CpePart, InventoryItemConfidence, InventorySource};
 
 pub struct DpkgSource;
 
@@ -11,7 +9,7 @@ impl Source for DpkgSource {
         "dpkg"
     }
 
-    fn collect(&self) -> Vec<InventoryItem> {
+    fn collect(&self) -> Vec<CpeEntry> {
         let Some(out) = run("dpkg-query -W -f='${Package}\\t${Version}\\n'") else {
             return vec![];
         };
@@ -22,8 +20,9 @@ impl Source for DpkgSource {
                 if product.starts_with("python3-") || product.starts_with("python-") {
                     None
                 } else {
-                    Some(InventoryItem {
-                        cpe: CpeEntry {
+                    Some(CpeEntry {
+                        cpe: Cpe {
+                            name: product.to_string(),
                             part: CpePart::Application,
                             vendor: String::new(),
                             product: product.to_lowercase().replace("-", "_"),

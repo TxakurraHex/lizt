@@ -1,5 +1,6 @@
-use crate::inventory_item::CpeEntry;
+use crate::cpe::Cpe;
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
@@ -7,22 +8,17 @@ pub struct Cve {
     pub id: String,
     pub descriptions: Option<String>,
     pub published: Option<DateTime<Utc>>,
-    pub references: Option<Vec<String>>,
-    pub cvss: Option<CvssInfo>,
-    pub cpes: Option<Vec<CpeMatch>>,
-}
-
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
-pub struct CvssInfo {
-    pub score: f64,
-    pub vector: String,
-    pub version: String,
+    pub refs: Option<Vec<String>>,
+    pub cvss_score: Option<Decimal>,
+    pub cvss_vector: Option<String>,
+    pub cvss_version: Option<String>,
+    pub cpes: Option<Vec<CveCpe>>,
 }
 
 /// A CPE match condition from NVD (version ranges etc.)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct CpeMatch {
-    pub cpe_entry: CpeEntry,
+pub struct CveCpe {
+    pub cpe: Cpe,
     pub vulnerable: bool,
     pub version_start_including: Option<String>,
     pub version_start_excluding: Option<String>,

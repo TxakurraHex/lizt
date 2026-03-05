@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use lizt_core::cve::Cve;
 use lizt_core::symbol::Symbol;
+use log::info;
 use std::collections::HashSet;
 
 #[async_trait]
@@ -26,7 +27,7 @@ impl CveSymbolExtractor {
         let mut seen: HashSet<String> = HashSet::new();
         for scraper in &self.scrapers {
             for cve in cves {
-                println!("Scraping {} with {}", cve.id, scraper.name());
+                info!("Scraping {} with {}", cve.id, scraper.name());
                 let symbols = scraper.scrape(cve).await;
 
                 for symbol in symbols {
