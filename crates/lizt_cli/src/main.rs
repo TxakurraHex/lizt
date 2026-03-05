@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
-use lizt_core::cpe::CpeEntry;
 use lizt_core::cve::Cve;
+use lizt_core::finding_record::FindingRecord;
 use lizt_core::scan::ScanStatus;
 use lizt_core::symbol::Symbol;
 use lizt_inventory::inventory::{Inventory, Source};
@@ -14,6 +14,7 @@ use lizt_symbols::scrapers::description_scraper::DescriptionScraper;
 use lizt_symbols::scrapers::github_scraper::GithubScraper;
 use lizt_symbols::symbol_extractor::{CveSymbolExtractor, Scraper};
 use log::{debug, error, info};
+use sqlx::types::Uuid;
 use sqlx::types::chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -67,22 +68,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let result: Result<(), Box<dyn std::error::Error>> = async {
                 let inventory = get_inventory();
-                for cpe in &inventory.items {
-                    debug!("{}", cpe.cpe.to_cpe_string());
-                }
-
                 let resolver = CpeResolver::new(Arc::clone(client()));
                 let cpe_entries = resolver.resolve_all(&inventory.items).await;
-                lizt_db::cpe_tables::upsert_cpes(&pool, &cpe_entries, &current_scan.id).await?;
 
-                let cves = get_cves(cpe_entries, client()).await;
+                let cpe_ids = lizt_db::cpe_tables::upsert_cpes(&pool, &cpe_entries).await?;
+
+                // First part of tuple is all CVEs found
+                // Second part is associations between CPEs and CVEs, used in findings table
+                let (cves, associations) = get_cves(&cpe_ids, client()).await;
                 for cve in &cves {
                     debug!("CVE: {}", cve.id);
                     lizt_db::cve_tables::upsert_cve(&pool, cve).await?;
-                    lizt_db::cve_tables::insert_cve_cpes(&pool, cve).await?;
                 }
 
+                let findings: Vec<FindingRecord> = associations
+                    .iter()
+                    .filter_map(|(cpe_id, cve_id)| {
+                        let cvss = cves.iter().find(|cve| cve.id == *cve_id)?.cvss_score;
+                        Some(FindingRecord {
+                            scan_id: current_scan.id,
+                            cpe_id: *cpe_id,
+                            cve_id: cve_id.clone(),
+                            cvss_score: cvss,
+                        })
+                    })
+                    .collect();
+
+                lizt_db::findings_table::insert_findings(&pool, &findings).await?;
+
                 let symbols = extract_symbols(cves, Arc::clone(client())).await;
+                for symbol in &symbols {
+                    lizt_db::symbol_tables::insert_symbol(&pool, symbol).await?;
+                }
                 error!("Extracted {} symbols", symbols.len());
                 Ok(())
             }
@@ -109,7 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 let resolver = CpeResolver::new(Arc::clone(client()));
                 let cpe_entries = resolver.resolve_all(&inventory.items).await;
-                lizt_db::cpe_tables::upsert_cpes(&pool, &cpe_entries, &current_scan.id).await?;
+                lizt_db::cpe_tables::upsert_cpes(&pool, &cpe_entries).await?;
                 Ok(())
             }
             .await;
@@ -168,30 +185,43 @@ fn get_inventory() -> Inventory {
     inventory
 }
 
-async fn get_cves(cpe_entries: Vec<CpeEntry>, rest_client: &LiztRestClient) -> Vec<Cve> {
-    let cpe_strings: Vec<String> = cpe_entries
-        .into_iter()
-        .map(|cpe_entry| cpe_entry.cpe.to_cpe_string())
-        .collect();
-    for entry in &cpe_strings {
-        debug!("[get_cves] CPE: {}", entry);
-    }
-    let results = futures::future::join_all(
-        cpe_strings
-            .iter()
-            .map(|cpe_string| rest_client.request_cve_data(cpe_string)),
-    )
+async fn get_cves(
+    cpe_string_to_id_map: &HashMap<String, Uuid>,
+    rest_client: &LiztRestClient,
+) -> (Vec<Cve>, Vec<(Uuid, String)>) {
+    let results = futures::future::join_all(cpe_string_to_id_map.iter().map(
+        |(cpe_string, cpe_uuid)| async move {
+            // Get all vulnerabilities related to the CPE item.
+            let vulnerabilities = rest_client
+                .request_cve_data(cpe_string)
+                .await
+                .unwrap_or_default();
+            // Map the vulnerability NVD result object to a lizt_core::Cve object
+            let cves: Vec<Cve> = vulnerabilities
+                .into_iter()
+                .map(|nvd_vuln| Cve::from(nvd_vuln.cve))
+                .collect();
+            // Construct a list of all CVE ID strings to the CPE ID UUID associated with it.
+            let associations: Vec<(Uuid, String)> =
+                cves.iter().map(|cve| (*cpe_uuid, cve.id.clone())).collect();
+            (cves, associations)
+        },
+    ))
     .await;
 
     let mut all_cves: HashMap<String, Cve> = HashMap::new();
-    for vulnerabilities in results.into_iter().flatten() {
-        for vulnerability in vulnerabilities {
-            let cve = Cve::from(vulnerability.cve);
-            debug!("Added CVE: {}", cve.id);
-            all_cves.insert(cve.id.clone(), cve);
+    let mut all_associations: Vec<(Uuid, String)> = Vec::new();
+
+    for (cves, associations) in results {
+        // Deduplicate CVEs
+        for cve in cves {
+            all_cves.entry(cve.id.clone()).or_insert(cve);
         }
+        // There should never be multiple identical CVE to CPE mappings
+        // bc they're collected using the CPE strings as an input
+        all_associations.extend(associations);
     }
-    all_cves.into_values().collect()
+    (all_cves.into_values().collect(), all_associations)
 }
 
 async fn get_cve_by_id(cve_id: &str, rest_client: &LiztRestClient) -> Vec<Cve> {
