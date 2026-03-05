@@ -6,7 +6,7 @@ use crate::nvd::cpe_response::{NvdCpeResponse, NvdProduct};
 use crate::nvd::cve_response::{NvdCveResponse, NvdVulnerability};
 use crate::nvd::github_response::GitHubIssue;
 use crate::rate_limiter::RateLimiter;
-use log::{debug, error, info};
+use log::{debug, error};
 use reqwest::Client;
 use std::time::Duration;
 
@@ -53,7 +53,10 @@ impl LiztRestClient {
             }
             debug!("Sending request {:?}", request);
             match request.send().await {
-                Ok(resp) if resp.status() == reqwest::StatusCode::FORBIDDEN => {
+                Ok(resp)
+                    if resp.status() == reqwest::StatusCode::FORBIDDEN
+                        || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
+                {
                     self.nvd_limiter.release();
                     tokio::time::sleep(Duration::from_secs(30)).await;
                 }
@@ -98,7 +101,10 @@ impl LiztRestClient {
             }
             debug!("Sending request {:?}", request);
             match request.send().await {
-                Ok(resp) if resp.status() == reqwest::StatusCode::FORBIDDEN => {
+                Ok(resp)
+                    if resp.status() == reqwest::StatusCode::FORBIDDEN
+                        || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
+                {
                     self.nvd_limiter.release();
                     tokio::time::sleep(Duration::from_secs(30)).await;
                 }
@@ -142,7 +148,10 @@ impl LiztRestClient {
             }
             debug!("Sending request {:?}", request);
             match request.send().await {
-                Ok(resp) if resp.status() == reqwest::StatusCode::FORBIDDEN => {
+                Ok(resp)
+                    if resp.status() == reqwest::StatusCode::FORBIDDEN
+                        || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
+                {
                     self.nvd_limiter.release();
                     tokio::time::sleep(Duration::from_secs(30)).await;
                 }
