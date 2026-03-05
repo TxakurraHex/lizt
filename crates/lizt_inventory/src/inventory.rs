@@ -142,6 +142,8 @@ fn normalize_system_cpe(cpe_item: &CpeEntry) -> CpeEntry {
     if let Some((vendor, product)) = vendor_trie().get_ancestor_value(&product_lower) {
         new_item.cpe.vendor = vendor.to_string();
         new_item.cpe.product = product.to_string();
+    } else {
+        new_item.cpe.product = product_lower;
     }
 
     if let Some(version) = cpe_item.cpe.version.as_deref() {
@@ -161,13 +163,20 @@ fn create_alt_items(cpe_item: &CpeEntry) -> Vec<CpeEntry> {
         items.push(new_item);
     }
 
-    static REGEXES: OnceLock<Regex> = OnceLock::new();
-    let regex = REGEXES.get_or_init(|| Regex::new(r"\d.*$").unwrap());
-    let no_digits = regex.replace(&product_name, "").to_string();
-    if no_digits.len() < product_name.len() {
-        let mut new_item = cpe_item.clone();
-        new_item.cpe.product = no_digits.to_string();
-        items.push(new_item);
+    static REGEXES: OnceLock<Vec<Regex>> = OnceLock::new();
+    let regexes = REGEXES.get_or_init(|| {
+        vec![
+            Regex::new(r"\d.*$").unwrap(),
+            Regex::new(r"_.?\d.*$").unwrap(),
+        ]
+    });
+    for regex in regexes {
+        let updated = regex.replace(&product_name, "").to_string();
+        if updated.len() < product_name.len() {
+            let mut new_item = cpe_item.clone();
+            new_item.cpe.product = updated.to_string();
+            items.push(new_item);
+        }
     }
 
     items
