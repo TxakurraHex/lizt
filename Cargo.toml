@@ -1,11 +1,13 @@
 [workspace]
 members = [
-    "crates/lizt_inventory",
-    "crates/lizt_rest",
-    "crates/lizt_symbols",
-    "crates/lizt_core",
-    "crates/lizt_cli", "crates/lizt_db",
+    "scanner/lizt_inventory",
+    "scanner/lizt_rest",
+    "scanner/lizt_symbols",
+    "common/lizt_core",
+    "scanner/lizt_cli",
+    "common/lizt_db",
 ]
+exclude = ["monitor"]
 resolver = "2"
 
 [workspace.dependencies]

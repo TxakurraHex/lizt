@@ -11,7 +11,7 @@ vulnerable symbols from CVE data, and (planned) uses eBPF to monitor runtime beh
 ## Build Commands
 
 ```bash
-cargo build                    # Build all crates
+cargo build                    # Build all scanner
 cargo build --release          # Release build
 cargo run -p lizt_cli          # Run the CLI
 cargo test                     # Run all tests

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-lizt_core = { path = "../lizt_core" }
+lizt_core = { path = "../../common/lizt_core" }
 lizt_rest = { path = "../lizt_rest" }
 
 regex = { workspace = true }

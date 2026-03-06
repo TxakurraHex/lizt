@@ -10,9 +10,9 @@ path = "src/main.rs"
 [dependencies]
 lizt_inventory = { path = "../lizt_inventory" }
 lizt_rest = { path = "../lizt_rest" }
-lizt_core = { path = "../lizt_core" }
+lizt_core = { path = "../../common/lizt_core" }
 lizt_symbols = { path = "../lizt_symbols" }
-lizt_db = { path = "../lizt_db" }
+lizt_db = { path = "../../common/lizt_db" }
 
 futures = { workspace = true }
 clap = { workspace = true }

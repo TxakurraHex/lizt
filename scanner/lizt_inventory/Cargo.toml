@@ -9,4 +9,4 @@ tracing = { workspace = true }
 serde_json = { workspace = true }
 regex = { workspace = true }
 radix_trie = { workspace = true }
-lizt_core = { path = "../lizt_core" }
+lizt_core = { path = "../../common/lizt_core" }

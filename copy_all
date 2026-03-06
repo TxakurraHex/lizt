@@ -2,4 +2,4 @@
 
 HOME=/Users/gbasil/Projects/practicum/lizt/
 
-rsync -avz --progress --exclude 'target/' --exclude '.git/' --exclude '.idea/' --exclude '.venv/' --exclude '.vscode/' --exclude 'copy_all' $HOME aws:/home/ubuntu/lizt/
+rsync -avz --progress --exclude 'target/' --exclude '.*/' --exclude 'copy_all' $HOME aws:/home/ubuntu/lizt/
