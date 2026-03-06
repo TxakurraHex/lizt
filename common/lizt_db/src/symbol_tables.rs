@@ -31,3 +31,14 @@ pub async fn get_symbols(pool: &PgPool) -> Result<Vec<Symbol>, sqlx::Error> {
         .await
         .map(|rows| rows.into_iter().map(Symbol::from).collect())
 }
+
+pub async fn get_symbols_with_ids(pool: &PgPool) -> Result<Vec<(i64, Symbol)>, sqlx::Error> {
+    sqlx::query_as::<_, CveSymbolsRow>("SELECT * FROM cve_symbols")
+        .fetch_all(pool)
+        .await
+        .map(|rows| {
+            rows.into_iter()
+                .map(|row| (row.id, Symbol::from(row)))
+                .collect()
+        })
+}
