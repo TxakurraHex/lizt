@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "crates/lizt_ebpf",
+    "crates/lizt_ebpf_programs",
+]
+resolver = "2"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+sqlx = { version = "0.8", features = ["postgres", "runtime-tokio", "time", "migrate", "uuid", "chrono", "rust_decimal"] }
+log = "0.4"
+anyhow = "1"

@@ -1,0 +1,7 @@
+[build]
+target = "bpfel-unknown-none"
+target-dir = "../../target-bpf"
+rustflags = ["-C", "panic=abort"]
+
+[unstable]
+build-std = ["core"]
