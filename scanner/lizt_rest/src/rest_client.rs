@@ -183,11 +183,8 @@ impl LiztRestClient {
         }
     }
 
-    pub async fn request_github_commit_diff(&self, commit_url: &str) -> Option<String> {
-        if !commit_url.contains("github.com") {
-            return None;
-        }
-        let patch_url = format!("{}.patch", commit_url.trim_end_matches('/'));
+    pub async fn request_patch(&self, commit_url: &str) -> Option<String> {
+        let patch_url = to_patch_url(commit_url)?;
         let mut retries = 0;
         loop {
             if retries >= MAX_GITHUB_RETRIES {
@@ -279,6 +276,24 @@ impl LiztRestClient {
                 }
             }
         }
+    }
+}
+
+fn to_patch_url(url: &str) -> Option<String> {
+    if url.contains("github.com") || url.contains("gitlab.com") {
+        Some(format!("{}.patch", url.trim_end_matches('/')))
+    } else if url.contains("git.kernel.org") {
+        // kernel.org uses a PoW rate-limiter, not dealing with that (yet...) just use GitHub mirror
+        let hash = url
+            .split('?')
+            .nth(1)
+            .and_then(|qs| qs.split('&').find(|p| p.starts_with("id=")))
+            .map(|p| &p[3..])?;
+        Some(format!(
+            "https://github.com/torvalds/linux/commit/{hash}.patch"
+        ))
+    } else {
+        None
     }
 }
 

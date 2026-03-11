@@ -40,7 +40,7 @@ impl Scraper for GithubScraper {
 
         let results = futures::future::join_all(references.iter().map(|url| async {
             tokio::join!(
-                self.client.request_github_commit_diff(url),
+                self.client.request_patch(url),
                 self.client.request_github_issue(url)
             )
         }))

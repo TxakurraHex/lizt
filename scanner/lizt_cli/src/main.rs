@@ -11,7 +11,7 @@ use lizt_inventory::sources::ubuntu_inv_source::UbuntuSource;
 use lizt_rest::cpe_resolver::CpeResolver;
 use lizt_rest::rest_client::LiztRestClient;
 use lizt_symbols::scrapers::description_scraper::DescriptionScraper;
-use lizt_symbols::scrapers::github_scraper::GithubScraper;
+use lizt_symbols::scrapers::git_scraper::GithubScraper;
 use lizt_symbols::symbol_extractor::{CveSymbolExtractor, Scraper};
 use log::{debug, error, info};
 use sqlx::types::Uuid;

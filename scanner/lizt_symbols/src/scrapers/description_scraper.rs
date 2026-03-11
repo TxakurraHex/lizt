@@ -1,5 +1,5 @@
-use async_trait::async_trait;
 use crate::symbol_extractor::Scraper;
+use async_trait::async_trait;
 use lizt_core::cve::Cve;
 use lizt_core::symbol::{Symbol, SymbolConfidence, SymbolType};
 use regex::Regex;
@@ -15,6 +15,36 @@ fn function_name_pattern_regexes() -> &'static (Regex, Regex, Regex, Regex, Rege
         Regex::new(r#"\s+(__[a-zA-Z0-9_]*|do_[a-zA-Z0-9_]*|sys_[a-zA-Z0-9_]*|ksys_[a-zA-Z0-9_]*)"#).unwrap()
     ))
 }
+
+const STOP_WORDS: &[&str] = &[
+    "the",
+    "does",
+    "when",
+    "these",
+    "those",
+    "this",
+    "that",
+    "function",
+    "method",
+    "symbol",
+    "helper",
+    "streaming",
+    "write",
+    "read",
+    "call",
+    "error",
+    "value",
+    "buffer",
+    "memory",
+    "pointer",
+    "integer",
+    "string",
+    "type",
+    "true",
+    "false",
+    "null",
+    "none",
+];
 
 pub struct DescriptionScraper;
 
@@ -108,7 +138,11 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
         });
     }
 
+    // Filter out common, English-language words (unlikely to be functions)
     symbols
+        .into_iter()
+        .filter(|s| !STOP_WORDS.contains(&s.name.to_lowercase().as_str()))
+        .collect()
 }
 
 /// Return a substring of `text` expanded by `pad` chars on each side of `[start, end)`.
