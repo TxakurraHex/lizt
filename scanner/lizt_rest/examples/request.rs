@@ -33,7 +33,7 @@ async fn cpe_match(client: &LiztRestClient, cpe_match: &str) -> Option<Vec<NvdCp
     )
 }
 
-async fn cve_results(client: &LiztRestClient, cpe_name: &String) -> Option<Vec<NvdCveItem>> {
+async fn cve_results(client: &LiztRestClient, cpe_name: &str) -> Option<Vec<NvdCveItem>> {
     Some(
         client
             .request_cve_data(cpe_name)

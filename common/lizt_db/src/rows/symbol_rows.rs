@@ -29,6 +29,19 @@ impl From<CveSymbolsRow> for Symbol {
 }
 
 #[derive(Debug, FromRow)]
+pub struct CveSymbolWithCpeRow {
+    pub id: i64,
+    pub cve_id: String,
+    pub name: String,
+    pub source: String,
+    pub confidence: String,
+    pub symbol_type: String,
+    pub context: String,
+    pub cpe_product: Option<String>,
+    pub cpe_source: Option<String>,
+}
+
+#[derive(Debug, FromRow)]
 pub struct SymbolObservationsRow {
     pub id: i64,
     pub cve_symbol_id: i64,

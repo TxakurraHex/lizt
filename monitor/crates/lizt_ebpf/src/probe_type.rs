@@ -3,10 +3,10 @@ use std::io::{self, BufRead};
 
 pub enum ProbeType {
     KProbe,
-    UProbe { binary_path: String },
+    UProbe,
 }
 
-pub fn determine(symbol_name: &str, binary_path: Option<&str>) -> io::Result<ProbeType> {
+pub fn determine(symbol_name: &str) -> io::Result<ProbeType> {
     let file = File::open("/proc/kallsyms")?;
     for line in io::BufReader::new(file).lines() {
         let line = line?;
@@ -21,7 +21,5 @@ pub fn determine(symbol_name: &str, binary_path: Option<&str>) -> io::Result<Pro
             }
         }
     }
-    Ok(ProbeType::UProbe {
-        binary_path: binary_path.unwrap_or("/usr/bin/unknown").to_string(),
-    })
+    Ok(ProbeType::UProbe)
 }

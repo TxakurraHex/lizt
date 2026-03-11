@@ -11,5 +11,6 @@ sqlx = { workspace = true }
 lizt_core = { path = "../../../common/lizt_core" }
 lizt_db = { path = "../../../common/lizt_db" }
 log = { workspace = true }
+log4rs = { workspace = true }
 anyhow = "1"
 

@@ -1,6 +1,6 @@
 use crate::inventory::Source;
-use crate::scraper_proc_runner::run;
 use lizt_core::cpe::{Cpe, CpeEntry, CpePart, InventoryItemConfidence, InventorySource};
+use lizt_core::process_runner::run;
 use serde::Deserialize;
 use tracing::error;
 
