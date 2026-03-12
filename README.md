@@ -17,8 +17,8 @@ System inventory → CPE matching → CVE lookup → Symbol extraction → eBPF 
    the NVD CPE dictionary
 3. **CVE lookup** — queries the NVD CVE API using confirmed CPE names to find applicable
    vulnerabilities
-4. **Symbol extraction** — parses CVE descriptions, GitHub commit diffs, and GitHub issue/PR
-   bodies to identify vulnerable function symbols
+4. **Symbol extraction** — parses CVE descriptions, GitHub commit diffs, GitHub issue/PR
+   bodies, and OSV database patch commits to identify vulnerable function symbols
 5. **Ranking** — scores findings using CVSS score, KEV listing status, and runtime call
    confirmation
 6. **eBPF runtime monitoring** — attaches kernel and userspace probes to vulnerable symbols
@@ -32,7 +32,7 @@ lizt/
   scanner/                # Scanner-only crates
     lizt_cli/             # CLI binary (scan, inventory, symbols, rank, reset, configure)
     lizt_inventory/       # System inventory collection
-    lizt_rest/            # NVD and GitHub HTTP client
+    lizt_rest/            # NVD, GitHub, and OSV HTTP client
     lizt_symbols/         # Vulnerable symbol extraction
   common/                 # Shared crates (used by both scanner and monitor)
     lizt_core/            # Domain models (Symbol, Cve, CpeEntry, FindingRecord, etc.)
@@ -188,13 +188,17 @@ been called at runtime, prioritizing actionable findings.
 
 ## Symbol Extraction
 
-Symbols are extracted from three sources, each assigned a confidence level:
+Symbols are extracted from four sources, each assigned a confidence level:
 
 | Source             | Method                                                                          | Confidence    |
 |--------------------|---------------------------------------------------------------------------------|---------------|
 | CVE description    | Function definitions (`foo()`), keyword phrases ("vulnerable function `foo`")   | Medium / Low  |
 | GitHub commit diff | Changed function signatures (C, Python, Java), function calls in modified lines | High / Medium |
 | GitHub issue / PR  | Description and title text, same regex patterns as CVE description              | Medium / Low  |
+| OSV database       | Patch commits from structured fix events; OSV details text                      | High / Medium |
+
+NVD reference tags are used to prioritise `Patch`-tagged refs during scraping and skip
+refs tagged only with `Press/Media Coverage` or `Exploit`, reducing wasted rate limit budget.
 
 ## Inventory Sources
 
