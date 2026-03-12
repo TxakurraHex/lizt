@@ -1,9 +1,12 @@
 use lizt_rest::nvd::cpe_response::NvdCpeItem;
 use lizt_rest::nvd::cve_response::NvdCveItem;
+use lizt_rest::osv::osv_response::OsvResponse;
 use lizt_rest::rest_client::LiztRestClient;
+use log::{error, info};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
     let api_key = std::env::var("NVD_API_KEY").ok();
     let github_token = std::env::var("GITHUB_TOKEN").ok();
     let rest_client = LiztRestClient::new(api_key, github_token);
@@ -12,9 +15,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         for product in cpe_matches {
             if let Some(cves) = cve_results(&rest_client, &product.cpe_name).await {
                 for cve in &cves {
-                    println!("CVE: {:?}", cve);
+                    info!("CVE: {:?}", cve);
+                    if let Some(ovd_extr) = rest_client.request_osv(&cve.id).await {
+                        info!("OVD responses: {:?}", ovd_extr);
+                    } else {
+                        error!("No OVD responses");
+                    }
                 }
-                println!("Found {} CVEs", cves.len());
+                info!("Found {} CVEs", cves.len());
             }
         }
     }

@@ -1,10 +1,12 @@
 const MAX_GITHUB_RETRIES: u32 = 3;
 const NVD_CVE_ENDPOINT: &str = "https://services.nvd.nist.gov/rest/json/cves/2.0";
 const NVD_CPE_ENDPOINT: &str = "https://services.nvd.nist.gov/rest/json/cpes/2.0";
+const OSV_ENDPOINT: &str = "https://api.osv.dev/v1/vulns";
 
 use crate::nvd::cpe_response::{NvdCpeResponse, NvdProduct};
 use crate::nvd::cve_response::{NvdCveResponse, NvdVulnerability};
 use crate::nvd::github_response::GitHubIssue;
+use crate::osv::osv_response::{OsvExtracted, OsvResponse};
 use crate::rate_limiter::RateLimiter;
 use log::{debug, error};
 use reqwest::Client;
@@ -14,6 +16,7 @@ pub struct LiztRestClient {
     client: Client,
     nvd_limiter: RateLimiter,
     github_limiter: RateLimiter,
+    osv_limiter: RateLimiter,
     nvd_key: Option<String>,
     github_token: Option<String>,
 }
@@ -38,6 +41,7 @@ impl LiztRestClient {
             github_token: github_token.clone(),
             nvd_limiter: RateLimiter::nvd(nvd_api_key.is_some()),
             github_limiter: RateLimiter::github(github_token.is_some()),
+            osv_limiter: RateLimiter::osv(),
         }
     }
 
@@ -272,6 +276,47 @@ impl LiztRestClient {
                 Err(e) => {
                     self.github_limiter.release();
                     error!("Couldn't get GitHub issue from {}: {}", api_url, e);
+                    return None;
+                }
+            }
+        }
+    }
+
+    pub async fn request_osv(&self, cve_id: &str) -> Option<OsvExtracted> {
+        loop {
+            self.osv_limiter.acquire().await;
+            let request_url = format!("{}/{}", OSV_ENDPOINT, cve_id);
+            let request = self.client.get(&request_url);
+            debug!("Sending request {:?}", request_url);
+            match request.send().await {
+                Ok(resp)
+                    if resp.status() == reqwest::StatusCode::FORBIDDEN
+                        || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
+                {
+                    self.osv_limiter.release();
+                    tokio::time::sleep(Duration::from_secs(30)).await;
+                }
+                Ok(resp) if resp.status().is_success() => {
+                    let text = resp.text().await.ok()?;
+                    return match serde_json::from_str::<OsvResponse>(&text) {
+                        Ok(data) => Some(data.extract()),
+                        Err(e) => {
+                            error!("Error parsing OSV response for {}: {}", cve_id, e);
+                            None
+                        }
+                    };
+                }
+                Ok(resp) => {
+                    error!(
+                        "Failed to get OSV response for {}: {}",
+                        cve_id,
+                        resp.status()
+                    );
+                    return None;
+                }
+                Err(e) => {
+                    self.osv_limiter.release();
+                    error!("Error fetching OSV data for {}: {}", cve_id, e);
                     return None;
                 }
             }

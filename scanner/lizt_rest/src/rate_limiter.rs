@@ -25,6 +25,14 @@ impl RateLimiter {
         }
     }
 
+    pub fn osv() -> Self {
+        Self {
+            requests: Mutex::new(VecDeque::new()),
+            max_requests: 5,
+            window: Duration::from_secs(30),
+        }
+    }
+
     pub fn release(&self) {
         let mut reqs = self.requests.lock().unwrap();
         reqs.pop_back();

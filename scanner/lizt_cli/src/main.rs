@@ -12,6 +12,7 @@ use lizt_rest::cpe_resolver::CpeResolver;
 use lizt_rest::rest_client::LiztRestClient;
 use lizt_symbols::scrapers::description_scraper::DescriptionScraper;
 use lizt_symbols::scrapers::git_scraper::GithubScraper;
+use lizt_symbols::scrapers::osv_scraper::OsvScraper;
 use lizt_symbols::symbol_extractor::{CveSymbolExtractor, Scraper};
 use log::{debug, error, info};
 use sqlx::types::Uuid;
@@ -96,7 +97,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 lizt_db::findings_table::insert_findings(&pool, &findings).await?;
 
-                let symbols = extract_symbols(cves, Arc::clone(client())).await;
+                let symbols = extract_symbols(cves, client()).await;
                 for symbol in &symbols {
                     lizt_db::symbol_tables::insert_symbol(&pool, symbol).await?;
                 }
@@ -135,7 +136,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Symbols { cve_id } => {
             if let Some(cve_id) = cve_id {
                 let symbols =
-                    extract_symbols(get_cve_by_id(&cve_id, client()).await, Arc::clone(client()))
+                    extract_symbols(get_cve_by_id(&cve_id, client()).await, client())
                         .await;
 
                 error!("Extracted {} symbols", symbols.len());
@@ -146,7 +147,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let result: Result<(), Box<dyn std::error::Error>> = async {
                     let cves = lizt_db::cve_tables::get_all_cves(&pool).await?;
 
-                    let symbols = extract_symbols(cves, Arc::clone(client())).await;
+                    let symbols = extract_symbols(cves, client()).await;
                     error!("Extracted {} symbols", symbols.len());
                     for symbol in &symbols {
                         lizt_db::symbol_tables::insert_symbol(&pool, symbol).await?;
@@ -237,10 +238,11 @@ async fn get_cve_by_id(cve_id: &str, rest_client: &LiztRestClient) -> Vec<Cve> {
     cves.into_values().collect()
 }
 
-async fn extract_symbols(cves: Vec<Cve>, client: Arc<LiztRestClient>) -> Vec<Symbol> {
+async fn extract_symbols(cves: Vec<Cve>, client: &Arc<LiztRestClient>) -> Vec<Symbol> {
     let scrapers: Vec<Box<dyn Scraper>> = vec![
         Box::new(DescriptionScraper),
-        Box::new(GithubScraper::new(client)),
+        Box::new(GithubScraper::new(Arc::clone(client))),
+        Box::new(OsvScraper::new(Arc::clone(client))),
     ];
     let mut extractor = CveSymbolExtractor::new(scrapers);
     extractor.extract_symbols(&cves).await;
