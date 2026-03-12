@@ -1,6 +1,5 @@
 use lizt_rest::nvd::cpe_response::NvdCpeItem;
 use lizt_rest::nvd::cve_response::NvdCveItem;
-use lizt_rest::osv::osv_response::OsvResponse;
 use lizt_rest::rest_client::LiztRestClient;
 use log::{error, info};
 

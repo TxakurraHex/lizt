@@ -28,7 +28,7 @@ impl RateLimiter {
     pub fn osv() -> Self {
         Self {
             requests: Mutex::new(VecDeque::new()),
-            max_requests: 5,
+            max_requests: 25,
             window: Duration::from_secs(30),
         }
     }

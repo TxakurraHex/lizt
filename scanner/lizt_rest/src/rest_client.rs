@@ -1,4 +1,4 @@
-const MAX_GITHUB_RETRIES: u32 = 3;
+const MAX_RETRIES: u32 = 3;
 const NVD_CVE_ENDPOINT: &str = "https://services.nvd.nist.gov/rest/json/cves/2.0";
 const NVD_CPE_ENDPOINT: &str = "https://services.nvd.nist.gov/rest/json/cpes/2.0";
 const OSV_ENDPOINT: &str = "https://api.osv.dev/v1/vulns";
@@ -8,7 +8,6 @@ use crate::nvd::cve_response::{NvdCveResponse, NvdVulnerability};
 use crate::nvd::github_response::GitHubIssue;
 use crate::osv::osv_response::{OsvExtracted, OsvResponse};
 use crate::rate_limiter::RateLimiter;
-use lizt_core::cve;
 use log::{debug, error};
 use reqwest::Client;
 use std::time::Duration;
@@ -47,7 +46,7 @@ impl LiztRestClient {
     }
 
     pub async fn request_cpe_data(&self, cpe_match: &str) -> Option<Vec<NvdProduct>> {
-        loop {
+        for attempt in 0..MAX_RETRIES {
             self.nvd_limiter.acquire().await;
             let mut request = self
                 .client
@@ -66,6 +65,9 @@ impl LiztRestClient {
                         || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
                 {
                     self.nvd_limiter.release();
+                    if attempt + 1 == MAX_RETRIES {
+                        break;
+                    }
                     tokio::time::sleep(Duration::from_secs(30)).await;
                 }
                 Ok(resp) if resp.status().is_success() => {
@@ -95,10 +97,15 @@ impl LiztRestClient {
                 }
             }
         }
+        error!(
+            "Failed to retrieve CPE data for {}, exhausted allotted retries ({})",
+            cpe_match, MAX_RETRIES
+        );
+        None
     }
 
     pub async fn request_cve_data(&self, cpe_name: &str) -> Option<Vec<NvdVulnerability>> {
-        loop {
+        for attempt in 0..MAX_RETRIES {
             self.nvd_limiter.acquire().await;
             let mut request = self
                 .client
@@ -114,6 +121,9 @@ impl LiztRestClient {
                         || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
                 {
                     self.nvd_limiter.release();
+                    if attempt + 1 == MAX_RETRIES {
+                        break;
+                    }
                     tokio::time::sleep(Duration::from_secs(30)).await;
                 }
                 Ok(resp) if resp.status().is_success() => {
@@ -142,10 +152,15 @@ impl LiztRestClient {
                 }
             }
         }
+        error!(
+            "Failed to retrieve CVE data for {}, exhausted allotted retries ({})",
+            cpe_name, MAX_RETRIES
+        );
+        None
     }
 
     pub async fn request_cve_by_id(&self, cve_id: &str) -> Option<Vec<NvdVulnerability>> {
-        loop {
+        for attempt in 0..MAX_RETRIES {
             self.nvd_limiter.acquire().await;
             let mut request = self
                 .client
@@ -161,6 +176,9 @@ impl LiztRestClient {
                         || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
                 {
                     self.nvd_limiter.release();
+                    if attempt + 1 == MAX_RETRIES {
+                        break;
+                    }
                     tokio::time::sleep(Duration::from_secs(30)).await;
                 }
                 Ok(resp) if resp.status().is_success() => {
@@ -189,16 +207,17 @@ impl LiztRestClient {
                 }
             }
         }
+        error!(
+            "Failed to retrieve CVE data for {}, exhausted allotted retries ({})",
+            cve_id, MAX_RETRIES
+        );
+        None
     }
 
     pub async fn request_patch(&self, commit_url: &str) -> Option<String> {
         let patch_url = to_patch_url(commit_url)?;
-        let mut retries = 0;
-        loop {
-            if retries >= MAX_GITHUB_RETRIES {
-                error!("Max retries reached for commit diff {}", commit_url);
-                return None;
-            }
+
+        for attempt in 0..MAX_RETRIES {
             self.github_limiter.acquire().await;
             let mut request = self.client.get(&patch_url);
             if let Some(github_key) = &self.github_token {
@@ -211,7 +230,9 @@ impl LiztRestClient {
                         || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
                 {
                     self.github_limiter.release();
-                    retries += 1;
+                    if attempt + 1 == MAX_RETRIES {
+                        break;
+                    }
                     tokio::time::sleep(github_wait_until_reset(&resp)).await;
                 }
                 Ok(resp) if resp.status().is_success() => return resp.text().await.ok(),
@@ -230,6 +251,11 @@ impl LiztRestClient {
                 }
             }
         }
+        error!(
+            "Failed to retrieve {}, exhausted allotted retries ({})",
+            patch_url, MAX_RETRIES
+        );
+        None
     }
 
     pub async fn request_github_issue(&self, issue_url: &str) -> Option<GitHubIssue> {
@@ -239,12 +265,8 @@ impl LiztRestClient {
         let api_url = issue_url
             .replace("github.com", "api.github.com/repos")
             .replace("/pull/", "/pulls/");
-        let mut retries = 0;
-        loop {
-            if retries >= MAX_GITHUB_RETRIES {
-                error!("Max retries reached for GitHub issue {}", issue_url);
-                return None;
-            }
+
+        for attempt in 0..MAX_RETRIES {
             self.github_limiter.acquire().await;
             let mut request = self.client.get(&api_url);
             if let Some(github_key) = &self.github_token {
@@ -257,7 +279,9 @@ impl LiztRestClient {
                         || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
                 {
                     self.github_limiter.release();
-                    retries += 1;
+                    if attempt + 1 == MAX_RETRIES {
+                        break;
+                    }
                     tokio::time::sleep(github_wait_until_reset(&resp)).await;
                 }
                 Ok(resp) if resp.status().is_success() => {
@@ -284,10 +308,13 @@ impl LiztRestClient {
                 }
             }
         }
+
+        error!("Max retries reached for GitHub issue {}", issue_url);
+        None
     }
 
     pub async fn request_osv(&self, cve_id: &str) -> Option<OsvExtracted> {
-        loop {
+        for attempt in 0..MAX_RETRIES {
             self.osv_limiter.acquire().await;
             let request_url = format!("{}/{}", OSV_ENDPOINT, cve_id);
             let request = self.client.get(&request_url);
@@ -298,6 +325,9 @@ impl LiztRestClient {
                         || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
                 {
                     self.osv_limiter.release();
+                    if attempt + 1 == MAX_RETRIES {
+                        break;
+                    }
                     tokio::time::sleep(Duration::from_secs(30)).await;
                 }
                 Ok(resp) if resp.status().is_success() => {
@@ -325,6 +355,11 @@ impl LiztRestClient {
                 }
             }
         }
+        error!(
+            "Failed to retrieve OSV data for {}, exhausted allotted retries ({})",
+            cve_id, MAX_RETRIES
+        );
+        None
     }
 }
 

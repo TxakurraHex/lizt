@@ -73,11 +73,11 @@ fn load_config() {
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        if let Some((key, value)) = line.split_once('=') {
-            if std::env::var(key).is_err() {
-                // Safety: single-threaded at this point (called before tokio spawns tasks)
-                unsafe { std::env::set_var(key, value) };
-            }
+        if let Some((key, value)) = line.split_once('=')
+            && std::env::var(key).is_err()
+        {
+            // Safety: single-threaded at this point (called before tokio spawns tasks)
+            unsafe { std::env::set_var(key, value) };
         }
     }
 }
