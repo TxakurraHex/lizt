@@ -3,7 +3,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct OsvResponse {
     pub details: Option<String>,
-    pub affected: Vec<OsvAffected>,
+    pub affected: Option<Vec<OsvAffected>>,
     pub references: Option<Vec<OsvReferences>>,
 }
 
@@ -50,6 +50,7 @@ impl OsvResponse {
         let patch_urls = self
             .affected
             .iter()
+            .flatten()
             .flat_map(|affected| affected.ranges.iter().flatten())
             .filter_map(|range| {
                 let repo = range.repo.as_deref()?.trim_end_matches('/');

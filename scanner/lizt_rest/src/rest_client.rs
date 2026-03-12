@@ -8,6 +8,7 @@ use crate::nvd::cve_response::{NvdCveResponse, NvdVulnerability};
 use crate::nvd::github_response::GitHubIssue;
 use crate::osv::osv_response::{OsvExtracted, OsvResponse};
 use crate::rate_limiter::RateLimiter;
+use lizt_core::cve;
 use log::{debug, error};
 use reqwest::Client;
 use std::time::Duration;
@@ -55,7 +56,10 @@ impl LiztRestClient {
             if let Some(nvd_key) = &self.nvd_key {
                 request = request.header("apiKey", nvd_key);
             }
-            debug!("Sending request {:?}", request);
+            debug!(
+                "Sending request to CPE endpoint with CPE match string {}",
+                cpe_match
+            );
             match request.send().await {
                 Ok(resp)
                     if resp.status() == reqwest::StatusCode::FORBIDDEN
@@ -103,7 +107,7 @@ impl LiztRestClient {
             if let Some(nvd_key) = &self.nvd_key {
                 request = request.header("apiKey", nvd_key);
             }
-            debug!("Sending request {:?}", request);
+            debug!("Sending request to CVE endpoint with CPE name {}", cpe_name);
             match request.send().await {
                 Ok(resp)
                     if resp.status() == reqwest::StatusCode::FORBIDDEN
@@ -150,7 +154,7 @@ impl LiztRestClient {
             if let Some(nvd_key) = &self.nvd_key {
                 request = request.header("apiKey", nvd_key);
             }
-            debug!("Sending request {:?}", request);
+            debug!("Sending request to CVE endpoint for {}", cve_id);
             match request.send().await {
                 Ok(resp)
                     if resp.status() == reqwest::StatusCode::FORBIDDEN
@@ -200,7 +204,7 @@ impl LiztRestClient {
             if let Some(github_key) = &self.github_token {
                 request = request.header("Authorization", format!("Bearer {}", github_key));
             }
-            debug!("Sending request {:?}", request);
+            debug!("Sending request for patch: {}", patch_url);
             match request.send().await {
                 Ok(resp)
                     if resp.status() == reqwest::StatusCode::FORBIDDEN
@@ -246,7 +250,7 @@ impl LiztRestClient {
             if let Some(github_key) = &self.github_token {
                 request = request.header("Authorization", format!("Bearer {}", github_key));
             }
-            debug!("Sending request {:?}", request);
+            debug!("Sending request for github issue {}", issue_url);
             match request.send().await {
                 Ok(resp)
                     if resp.status() == reqwest::StatusCode::FORBIDDEN
@@ -287,7 +291,7 @@ impl LiztRestClient {
             self.osv_limiter.acquire().await;
             let request_url = format!("{}/{}", OSV_ENDPOINT, cve_id);
             let request = self.client.get(&request_url);
-            debug!("Sending request {:?}", request_url);
+            debug!("Sending request to OSV endpoint for {}", cve_id);
             match request.send().await {
                 Ok(resp)
                     if resp.status() == reqwest::StatusCode::FORBIDDEN

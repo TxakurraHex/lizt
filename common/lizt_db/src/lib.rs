@@ -44,6 +44,19 @@ pub async fn reset() -> Result<(), Box<dyn std::error::Error>> {
         .execute(&pool)
         .await?;
 
+    // Grant schema privileges to the app user (required in PostgreSQL 15+)
+    let admin_opts = std::env::var("ADMINDB_URL")?
+        .parse::<sqlx::postgres::PgConnectOptions>()?
+        .database(&db_name);
+    let admin_new_pool = PgPoolOptions::new()
+        .max_connections(1)
+        .connect_with(admin_opts)
+        .await?;
+    sqlx::query("GRANT ALL ON SCHEMA public TO PUBLIC")
+        .execute(&admin_new_pool)
+        .await?;
+    admin_new_pool.close().await;
+
     pool.close().await;
 
     // Re-run migrations

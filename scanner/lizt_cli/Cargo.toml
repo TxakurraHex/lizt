@@ -20,3 +20,4 @@ tokio = { workspace = true }
 sqlx = { workspace = true }
 log4rs = { workspace = true }
 log = { workspace = true }
+inquire = { workspace = true }

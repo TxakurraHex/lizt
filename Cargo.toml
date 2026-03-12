@@ -32,3 +32,4 @@ tokio = { version = "1", features = ["full"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.21", features = ["serde"] }
 rust_decimal = { version = "1.40", features = ["db-postgres", "serde"] }
+inquire = "0.7"
