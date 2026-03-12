@@ -1,7 +1,7 @@
 use crate::scrapers::description_scraper::scrape_description;
 use crate::symbol_extractor::Scraper;
 use async_trait::async_trait;
-use lizt_core::cve::Cve;
+use lizt_core::cve::{Cve, CveRef};
 use lizt_core::symbol::{Symbol, SymbolConfidence, SymbolType};
 use lizt_rest::nvd::github_response::GitHubIssue;
 use lizt_rest::rest_client::LiztRestClient;
@@ -38,28 +38,53 @@ impl Scraper for GithubScraper {
             return vec![];
         };
 
-        let results = futures::future::join_all(references.iter().map(|url| async {
+        // Prioritise Patch-tagged refs first; skip refs tagged only with low-signal tags.
+        let ordered_refs = prioritize_refs(references);
+
+        let results = futures::future::join_all(ordered_refs.iter().map(|r| async {
             tokio::join!(
-                self.client.request_patch(url),
-                self.client.request_github_issue(url)
+                self.client.request_patch(&r.url),
+                self.client.request_github_issue(&r.url)
             )
         }))
         .await;
 
         let mut symbols = vec![];
-        for (url, (diff, issue)) in references.iter().zip(results) {
+        for (r, (diff, issue)) in ordered_refs.iter().zip(results) {
             if let Some(git_diff) = diff {
-                symbols.extend(scrape_diff(git_diff, url, &cve.id));
+                symbols.extend(scrape_diff(git_diff, &r.url, &cve.id));
             }
             if let Some(github_issue) = issue {
-                symbols.extend(scrape_github_issue(github_issue, url, &cve.id));
+                symbols.extend(scrape_github_issue(github_issue, &r.url, &cve.id));
             }
         }
         symbols
     }
 }
 
-fn scrape_diff(diff_string: String, commit_url: &String, cve_id: &String) -> Vec<Symbol> {
+/// Returns refs ordered: Patch-tagged first, then untagged/other, skipping refs whose only
+/// tags are low-signal (Press/Media Coverage, Exploit).
+fn prioritize_refs(refs: &[CveRef]) -> Vec<&CveRef> {
+    const SKIP_ONLY: &[&str] = &["Press/Media Coverage", "Exploit"];
+
+    let skip = |r: &&CveRef| -> bool {
+        let tags: Vec<_> = r.tags.iter().flatten().collect();
+        !tags.is_empty() && tags.iter().all(|t| SKIP_ONLY.contains(&t.as_str()))
+    };
+
+    let mut patch: Vec<&CveRef> = refs
+        .iter()
+        .filter(|r| r.tags.iter().flatten().any(|t| t == "Patch"))
+        .collect();
+    let mut other: Vec<&CveRef> = refs
+        .iter()
+        .filter(|r| !r.tags.iter().flatten().any(|t| t == "Patch") && !skip(r))
+        .collect();
+    patch.append(&mut other);
+    patch
+}
+
+pub fn scrape_diff(diff_string: String, commit_url: &str, cve_id: &String) -> Vec<Symbol> {
     let mut symbols = vec![];
     let source = format!("commit_diff: {}", commit_url);
 

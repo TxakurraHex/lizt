@@ -17,7 +17,7 @@ pub async fn upsert_cve(pool: &PgPool, cve: &Cve) -> Result<(), sqlx::Error> {
     )
     .bind(&cve.id)
     .bind(&cve.descriptions)
-    .bind(&cve.refs)
+    .bind(cve.refs.as_ref().map(sqlx::types::Json))
     .bind(cve.cvss_score)
     .bind(&cve.cvss_vector)
     .bind(&cve.cvss_version)

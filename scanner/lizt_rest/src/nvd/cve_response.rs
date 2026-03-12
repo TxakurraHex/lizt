@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use lizt_core::cpe::Cpe;
-use lizt_core::cve::{Cve, CveCpe};
+use lizt_core::cve::{Cve, CveCpe, CveRef};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
@@ -31,6 +31,15 @@ pub struct NvdCveReference {
     pub url: String,
     pub source: Option<String>,
     pub tags: Option<Vec<String>>,
+}
+
+impl From<NvdCveReference> for CveRef {
+    fn from(value: NvdCveReference) -> Self {
+        Self {
+            url: value.url,
+            tags: value.tags,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -108,7 +117,7 @@ impl From<NvdCveItem> for Cve {
                 .map(|dt| dt.with_timezone(&Utc)),
             refs: value
                 .references
-                .map(|refs| refs.into_iter().map(|r| r.url).collect()),
+                .map(|refs| refs.into_iter().map(CveRef::from).collect()),
             cvss_score: cvss.as_ref().map(|c| c.score),
             cvss_vector: cvss.as_ref().map(|c| c.vector.clone()),
             cvss_version: cvss.as_ref().map(|c| c.version.clone()),
