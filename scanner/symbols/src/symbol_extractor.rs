@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use common::cve::Cve;
 use common::symbol::Symbol;
 use log::info;
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 #[async_trait]
 pub trait Scraper: Send + Sync {
@@ -24,18 +24,29 @@ impl CveSymbolExtractor {
     }
 
     pub async fn extract_symbols(&mut self, cves: &[Cve]) {
-        let mut seen: HashSet<String> = HashSet::new();
-        for scraper in &self.scrapers {
-            for cve in cves {
-                info!("Scraping {} with {}", cve.id, scraper.name());
-                let symbols = scraper.scrape(cve).await;
-
-                for symbol in symbols {
-                    if seen.insert(format!("{}_{}", symbol.name, symbol.cve_id)) {
-                        self.symbols.push(symbol);
-                    }
-                }
+        let mut best: HashMap<String, Symbol> = HashMap::new();
+        let all_symbols: Vec<Symbol> = futures::future::join_all(cves.iter().map(|cve| {
+            let scrapers = &self.scrapers;
+            async move {
+                futures::future::join_all(scrapers.iter().map(|scraper| scraper.scrape(cve))).await
             }
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .flatten()
+        .collect();
+
+        for symbol in all_symbols {
+            let key = format!("{}_{}", symbol.name, symbol.cve_id);
+            best.entry(key)
+                .and_modify(|existing| {
+                    if symbol.confidence > existing.confidence {
+                        *existing = symbol.clone();
+                    }
+                })
+                .or_insert(symbol);
         }
+        self.symbols = best.into_values().collect();
     }
 }

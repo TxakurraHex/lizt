@@ -1,17 +1,17 @@
 use crate::rows::symbol_rows::{CveSymbolWithCpeRow, CveSymbolsRow};
-use common::symbol::{Symbol, SymbolConfidence, SymbolType};
+use common::symbol::{SourceLang, Symbol, SymbolConfidence};
 use sqlx::PgPool;
 use std::str::FromStr;
 
 pub async fn insert_symbol(pool: &PgPool, symbol: &Symbol) -> Result<i64, sqlx::Error> {
     sqlx::query_scalar(
         r#"
-        INSERT INTO cve_symbols (cve_id, name, source, confidence, symbol_type, context)
+        INSERT INTO cve_symbols (cve_id, name, source, confidence, source_lang, context)
         VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (cve_id, name) DO UPDATE SET
             source = EXCLUDED.source,
             confidence = EXCLUDED.confidence,
-            symbol_type = EXCLUDED.symbol_type,
+            source_lang = EXCLUDED.source_lang,
             context = EXCLUDED.context
         RETURNING id
         "#,
@@ -20,7 +20,7 @@ pub async fn insert_symbol(pool: &PgPool, symbol: &Symbol) -> Result<i64, sqlx::
     .bind(&symbol.name)
     .bind(&symbol.source)
     .bind(symbol.confidence.to_string())
-    .bind(symbol.symbol_type.to_string())
+    .bind(symbol.source_lang.to_string())
     .bind(&symbol.context)
     .fetch_one(pool)
     .await
@@ -44,7 +44,7 @@ pub async fn get_symbols_with_ids(
                 cs.name,
                 cs.source,
                 cs.confidence,
-                cs.symbol_type,
+                cs.source_lang,
                 cs.context,
                 c.product AS cpe_product,
                 c.source AS cpe_source
@@ -63,8 +63,8 @@ pub async fn get_symbols_with_ids(
                 let cpe_source = row.cpe_source.clone();
                 let symbol = Symbol {
                     name: row.name,
-                    symbol_type: SymbolType::from_str(&row.symbol_type)
-                        .unwrap_or(SymbolType::Unknown),
+                    source_lang: SourceLang::from_str(&row.source_lang)
+                        .unwrap_or(SourceLang::Unknown),
                     confidence: SymbolConfidence::from_str(&row.confidence)
                         .unwrap_or(SymbolConfidence::Low),
                     cve_id: row.cve_id,

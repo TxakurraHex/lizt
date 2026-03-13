@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use common::symbol::{Symbol, SymbolConfidence, SymbolType};
+use common::symbol::{SourceLang, Symbol, SymbolConfidence};
 use sqlx::FromRow;
 use std::str::FromStr;
 
@@ -10,7 +10,7 @@ pub struct CveSymbolsRow {
     pub name: String,
     pub source: String, // Description, git diff, etc.
     pub confidence: String,
-    pub symbol_type: String,
+    pub source_lang: String,
     pub context: String,
 }
 
@@ -18,7 +18,7 @@ impl From<CveSymbolsRow> for Symbol {
     fn from(row: CveSymbolsRow) -> Self {
         Symbol {
             name: row.name,
-            symbol_type: SymbolType::from_str(&row.symbol_type).unwrap_or(SymbolType::Unknown),
+            source_lang: SourceLang::from_str(&row.source_lang).unwrap_or(SourceLang::Unknown),
             confidence: SymbolConfidence::from_str(&row.confidence)
                 .unwrap_or(SymbolConfidence::Low),
             cve_id: row.cve_id,
@@ -35,7 +35,7 @@ pub struct CveSymbolWithCpeRow {
     pub name: String,
     pub source: String,
     pub confidence: String,
-    pub symbol_type: String,
+    pub source_lang: String,
     pub context: String,
     pub cpe_product: Option<String>,
     pub cpe_source: Option<String>,

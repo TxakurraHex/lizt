@@ -2,18 +2,20 @@ use crate::scrapers::description_scraper::scrape_description;
 use crate::symbol_extractor::Scraper;
 use async_trait::async_trait;
 use common::cve::{Cve, CveRef};
-use common::symbol::{Symbol, SymbolConfidence, SymbolType};
+use common::symbol::{SourceLang, Symbol, SymbolConfidence};
+use regex::Regex;
 use rest::nvd::github_response::GitHubIssue;
 use rest::rest_client::LiztRestClient;
-use regex::Regex;
 use std::sync::{Arc, OnceLock};
 
-fn diff_regexes() -> &'static (Regex, Regex, Regex, Regex) {
-    static REGEXES: OnceLock<(Regex, Regex, Regex, Regex)> = OnceLock::new();
+fn diff_regexes() -> &'static (Regex, Regex, Regex, Regex, Regex, Regex) {
+    static REGEXES: OnceLock<(Regex, Regex, Regex, Regex, Regex, Regex)> = OnceLock::new();
     REGEXES.get_or_init(|| (
         Regex::new(r"^[-+]\s*(?:static\s+)?(?:inline\s+)?(?:const\s+)?(\w+(?:\s*\*)*)\s+([a-zA-Z_][a-zA-Z0-9_]+)\s*\([^)]*\)\s*(?:\{|;)?", ).unwrap(),
         Regex::new(r"^[-+]\s*def\s+([a-zA-Z_][a-zA-Z0-9_]+)\s*\(").unwrap(),
         Regex::new(r"^[-+]\s*(?:public|private|protected)?\s*(?:static)?\s*\w+\s+([a-zA-Z_][a-zA-Z0-9_]+)\s*\(", ).unwrap(),
+        Regex::new(r"^[-+]\s*(?:pub\s+)?(?:async\s+)?fn\s+([a-zA-Z_][a-zA-Z0-9_]+)\s*\(").unwrap(),
+        Regex::new(r"^[-+]\s*func\s+(?:\([^)]*\)\s+)?([a-zA-Z_][a-zA-Z0-9_]+)\s*\(").unwrap(),
         Regex::new(r"\b([a-zA-Z_][a-zA-Z0-9_]{2,})\s*\(").unwrap(),
     ))
 }
@@ -88,7 +90,14 @@ pub fn scrape_diff(diff_string: String, commit_url: &str, cve_id: &String) -> Ve
     let mut symbols = vec![];
     let source = format!("commit_diff: {}", commit_url);
 
-    let (c_func_regex, python_def_regex, java_method_regex, func_call_regex) = diff_regexes();
+    let (
+        c_func_regex,
+        python_def_regex,
+        java_method_regex,
+        rust_fn_regex,
+        go_func_regex,
+        func_call_regex,
+    ) = diff_regexes();
     const IGNORED_KEYWORDS: &[&str] = &[
         "if", "for", "while", "switch", "return", "sizeof", "malloc", "free",
     ];
@@ -107,7 +116,8 @@ pub fn scrape_diff(diff_string: String, commit_url: &str, cve_id: &String) -> Ve
                 confidence: SymbolConfidence::High,
                 context: context_range(2, 2),
                 cve_id: cve_id.into(),
-                symbol_type: SymbolType::Function,
+
+                source_lang: SourceLang::C,
             });
         }
 
@@ -118,7 +128,8 @@ pub fn scrape_diff(diff_string: String, commit_url: &str, cve_id: &String) -> Ve
                 confidence: SymbolConfidence::High,
                 context: context_range(2, 2),
                 cve_id: cve_id.into(),
-                symbol_type: SymbolType::Function,
+
+                source_lang: SourceLang::Python,
             });
         }
 
@@ -129,7 +140,32 @@ pub fn scrape_diff(diff_string: String, commit_url: &str, cve_id: &String) -> Ve
                 confidence: SymbolConfidence::High,
                 context: context_range(2, 2),
                 cve_id: cve_id.into(),
-                symbol_type: SymbolType::Function,
+
+                source_lang: SourceLang::Java,
+            });
+        }
+
+        if let Some(cap) = rust_fn_regex.captures(line) {
+            symbols.push(Symbol {
+                name: cap[1].to_string(),
+                source: source.clone(),
+                confidence: SymbolConfidence::High,
+                context: context_range(2, 2),
+                cve_id: cve_id.into(),
+
+                source_lang: SourceLang::Rust,
+            });
+        }
+
+        if let Some(cap) = go_func_regex.captures(line) {
+            symbols.push(Symbol {
+                name: cap[1].to_string(),
+                source: source.clone(),
+                confidence: SymbolConfidence::High,
+                context: context_range(2, 2),
+                cve_id: cve_id.into(),
+
+                source_lang: SourceLang::Go,
             });
         }
 
@@ -143,8 +179,9 @@ pub fn scrape_diff(diff_string: String, commit_url: &str, cve_id: &String) -> Ve
                         confidence: SymbolConfidence::Medium,
                         context: context_range(1, 1),
                         cve_id: cve_id.into(),
-                        symbol_type: SymbolType::Function,
-                    })
+
+                        source_lang: SourceLang::Unknown,
+                    });
                 }
             }
         }

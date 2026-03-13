@@ -1,7 +1,7 @@
 use crate::symbol_extractor::Scraper;
 use async_trait::async_trait;
 use common::cve::Cve;
-use common::symbol::{Symbol, SymbolConfidence, SymbolType};
+use common::symbol::{SourceLang, Symbol, SymbolConfidence};
 use regex::Regex;
 use std::sync::OnceLock;
 
@@ -82,7 +82,8 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             confidence: SymbolConfidence::Medium,
             context,
             cve_id: cve_id.into(),
-            symbol_type: SymbolType::Function,
+
+            source_lang: SourceLang::Unknown,
         });
     }
 
@@ -95,7 +96,8 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             confidence: SymbolConfidence::Low,
             context,
             cve_id: cve_id.into(),
-            symbol_type: SymbolType::Function,
+
+            source_lang: SourceLang::Unknown,
         });
     }
 
@@ -108,7 +110,8 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             confidence: SymbolConfidence::Low,
             context,
             cve_id: cve_id.into(),
-            symbol_type: SymbolType::Function,
+
+            source_lang: SourceLang::Unknown,
         });
     }
 
@@ -121,7 +124,8 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             confidence: SymbolConfidence::Low,
             context,
             cve_id: cve_id.into(),
-            symbol_type: SymbolType::Function,
+
+            source_lang: SourceLang::Unknown,
         });
     }
 
@@ -134,7 +138,8 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             confidence: SymbolConfidence::Low,
             context,
             cve_id: cve_id.into(),
-            symbol_type: SymbolType::Function,
+
+            source_lang: SourceLang::Unknown,
         });
     }
 

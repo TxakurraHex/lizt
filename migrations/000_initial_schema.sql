@@ -42,7 +42,7 @@ CREATE TABLE
         name TEXT NOT NULL,
         source TEXT NOT NULL,
         confidence TEXT NOT NULL,
-        symbol_type TEXT NOT NULL,
+        source_lang TEXT NOT NULL DEFAULT 'unknown',
         context TEXT NOT NULL,
         UNIQUE (cve_id, name)
     );
