@@ -224,6 +224,7 @@ logs/
 config.local.json
 secrets.json
 .env.local
+monitor/conf/env
 
 # Output/Reports
 output/
