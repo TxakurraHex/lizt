@@ -30,18 +30,22 @@ System inventory → CPE matching → CVE lookup → Symbol extraction → eBPF 
 lizt/
   Cargo.toml              # Scanner workspace
   scanner/                # Scanner-only crates
-    lizt_cli/             # CLI binary (scan, inventory, symbols, rank, reset, configure)
-    lizt_inventory/       # System inventory collection
-    lizt_rest/            # NVD, GitHub, and OSV HTTP client
-    lizt_symbols/         # Vulnerable symbol extraction
-  common/                 # Shared crates (used by both scanner and monitor)
-    lizt_core/            # Domain models (Symbol, Cve, CpeEntry, FindingRecord, etc.)
-    lizt_db/              # PostgreSQL database layer
+    cli/                  # CLI binary (scan, inventory, symbols, rank, reset, configure)
+    inventory/            # System inventory collection
+    rest/                 # NVD, GitHub, and OSV HTTP client
+    symbols/              # Vulnerable symbol extraction
+  core/                   # Shared crates (used by both scanner and monitor)
+    common/               # Domain models (Symbol, Cve, CpeEntry, FindingRecord, etc.)
+    db/                   # PostgreSQL database layer
   monitor/                # Monitor workspace (Linux only)
     Cargo.toml
+    Makefile              # Build and systemd install targets
     crates/
-      lizt_ebpf/          # Userspace eBPF loader and observer (daemon binary)
-      lizt_ebpf_programs/ # Kernel-side BPF programs (compiled to bpfel-unknown-none)
+      ebpf/               # Userspace eBPF loader and observer (daemon binary)
+      ebpf_programs/      # Kernel-side BPF programs (compiled to bpfel-unknown-none)
+    conf/
+      lizt_monitord.service  # systemd unit file
+      env.example            # Template for /etc/lizt/env credentials file
 ```
 
 The scanner and monitor are separate Cargo workspaces. The scanner builds on macOS and Linux;
@@ -88,36 +92,60 @@ cargo build --release
 
 ```bash
 cd monitor
-cargo build --release -p lizt_ebpf
+make build
 ```
 
 The build compiles the BPF kernel programs (targeting `bpfel-unknown-none`) and embeds the
-resulting bytecode directly into the `lizt_ebpf` binary. No separate BPF object file is
+resulting bytecode directly into the `lizt_monitord` binary. No separate BPF object file is
 deployed.
 
 ### 4. Run the scanner
 
 ```bash
-cargo run -p lizt_cli -- scan
+cargo run -p cli -- scan
 ```
 
-The database schema is applied automatically on first connection.
+The database schema is applied automatically on first connection. Running `cargo run -p cli`
+without a subcommand opens an interactive TUI menu where you can select and run any command
+without remembering subcommand names.
 
 ### 5. Run the monitor (Linux only, requires prior scan)
 
+**Ad-hoc:**
+
 ```bash
-sudo -E ./monitor/target/release/lizt_ebpf
+sudo -E ./monitor/target/release/lizt_monitord
 ```
 
 `-E` preserves environment variables (`DATABASE_URL` etc.). Alternatively, grant the binary
 specific capabilities instead of running as root:
 
 ```bash
-sudo setcap cap_bpf,cap_perfmon+eip ./monitor/target/release/lizt_ebpf
-./monitor/target/release/lizt_ebpf
+sudo setcap cap_bpf,cap_perfmon+eip ./monitor/target/release/lizt_monitord
+./monitor/target/release/lizt_monitord
 ```
 
+**As a systemd service:**
+
+```bash
+# Create /etc/lizt/env (mode 600) with credentials:
+#   DATABASE_URL=postgres://user:password@localhost/lizt
+#   API_KEY=your-nvd-api-key
+sudo install -Dm600 monitor/conf/env.example /etc/lizt/env
+# Edit /etc/lizt/env with real values, then install and start the service:
+cd monitor
+sudo make install
+sudo systemctl enable --now lizt_monitord
+```
+
+Credentials are loaded via `EnvironmentFile=/etc/lizt/env` and never appear in the unit file
+or source tree.
+
 ## CLI Subcommands (Scanner)
+
+Running `lizt` without a subcommand opens an interactive TUI menu (powered by
+[inquire](https://github.com/mikaelmello/inquire)) that loops through a Select prompt until
+you choose Quit. Each menu entry maps directly to one of the subcommands below.
 
 | Subcommand              | Description                                                       |
 |-------------------------|-------------------------------------------------------------------|
@@ -126,7 +154,13 @@ sudo setcap cap_bpf,cap_perfmon+eip ./monitor/target/release/lizt_ebpf
 | `symbols --cve-id <ID>` | Extract vulnerable symbols for a specific CVE                     |
 | `rank`                  | Generate or update vulnerability rankings                         |
 | `reset --confirm`       | Drop and recreate the database, then re-run migrations            |
-| `configure`             | Update tool configuration                                         |
+| `configure`             | Interactively set NVD_API_KEY and GITHUB_TOKEN; saves to `~/.lizt_config` |
+
+### Configuration file
+
+`configure` and the TUI menu persist API keys to `~/.lizt_config` in `KEY=VALUE` format. This
+file is loaded at startup so credentials survive across shell sessions without requiring
+`.bashrc`/`.zshrc` exports.
 
 ## eBPF Monitor
 
@@ -137,11 +171,11 @@ attaches eBPF probes to observe whether they are called at runtime.
 
 The monitor is split into two crates:
 
-- **`lizt_ebpf_programs`** — the kernel-side BPF programs, written in Rust using
+- **`ebpf_programs`** — the kernel-side BPF programs, written in Rust using
   [aya-ebpf](https://aya-rs.dev) and compiled to the `bpfel-unknown-none` target. Contains a
   single probe handler (`try_probe`) shared by both kprobe and uprobe program types.
 
-- **`lizt_ebpf`** — the userspace daemon, also written in Rust using
+- **`ebpf`** — the userspace daemon (`lizt_monitord` binary), also written in Rust using
   [aya](https://aya-rs.dev). Reads symbols from the database, loads and attaches probes, and
   consumes events from the kernel via a ring buffer.
 
@@ -215,6 +249,10 @@ Requests are automatically throttled to stay within NVD limits:
 
 - **Without API key**: 5 requests per 30 seconds
 - **With `API_KEY`**: 50 requests per 30 seconds
+- **OSV**: 25 requests per 30 seconds (no key required)
+
+All REST methods use bounded retry loops with a maximum of `MAX_RETRIES` attempts; failed
+requests after exhaustion are logged and skipped rather than retrying indefinitely.
 
 Get a free NVD API key at https://nvd.nist.gov/developers/request-an-api-key.
 
