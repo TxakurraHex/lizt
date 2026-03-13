@@ -1,0 +1,11 @@
+[package]
+name = "ebpf_programs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aya-ebpf = "0.1"
+
+[[bin]]
+name = "ebpf_programs"
+path = "src/main.rs"

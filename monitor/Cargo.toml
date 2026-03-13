@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "crates/lizt_ebpf",
-    "crates/lizt_ebpf_programs",
+    "crates/ebpf",
+    "crates/ebpf_programs",
 ]
 resolver = "2"
 

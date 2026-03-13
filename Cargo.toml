@@ -1,11 +1,11 @@
 [workspace]
 members = [
-    "scanner/lizt_inventory",
-    "scanner/lizt_rest",
-    "scanner/lizt_symbols",
-    "common/lizt_core",
-    "scanner/lizt_cli",
-    "common/lizt_db",
+    "scanner/inventory",
+    "scanner/rest",
+    "scanner/symbols",
+    "core/common",
+    "scanner/cli",
+    "core/db",
 ]
 exclude = ["monitor"]
 resolver = "2"

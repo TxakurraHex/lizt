@@ -364,6 +364,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a822ea5bc7590f9d40f1ba12c0dc3c2760f3482c6984db1573ad11031420831"
 
 [[package]]
+name = "cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "common",
+ "db",
+ "futures",
+ "inquire",
+ "inventory",
+ "log",
+ "log4rs",
+ "rest",
+ "sqlx",
+ "symbols",
+ "tokio",
+]
+
+[[package]]
 name = "cmake"
 version = "0.1.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -386,6 +404,19 @@ checksum = "ba5a308b75df32fe02788e748662718f03fde005016435c444eea572398219fd"
 dependencies = [
  "bytes",
  "memchr",
+]
+
+[[package]]
+name = "common"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "log",
+ "rust_decimal",
+ "serde",
+ "sqlx",
+ "strum",
+ "uuid",
 ]
 
 [[package]]
@@ -510,6 +541,19 @@ checksum = "78c8292055d1c1df0cce5d180393dc8cce0abec0a7102adb6c7b1eef6016d60a"
 dependencies = [
  "generic-array",
  "typenum",
+]
+
+[[package]]
+name = "db"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "common",
+ "futures",
+ "log",
+ "rust_decimal",
+ "sqlx",
+ "uuid",
 ]
 
 [[package]]
@@ -1261,6 +1305,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "inventory"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "radix_trie",
+ "regex",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "ipnet"
 version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1401,91 +1457,6 @@ name = "litemap"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
-
-[[package]]
-name = "lizt_cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "futures",
- "inquire",
- "lizt_core",
- "lizt_db",
- "lizt_inventory",
- "lizt_rest",
- "lizt_symbols",
- "log",
- "log4rs",
- "sqlx",
- "tokio",
-]
-
-[[package]]
-name = "lizt_core"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "log",
- "rust_decimal",
- "serde",
- "sqlx",
- "strum",
- "uuid",
-]
-
-[[package]]
-name = "lizt_db"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "futures",
- "lizt_core",
- "log",
- "rust_decimal",
- "sqlx",
- "uuid",
-]
-
-[[package]]
-name = "lizt_inventory"
-version = "0.1.0"
-dependencies = [
- "lizt_core",
- "radix_trie",
- "regex",
- "serde",
- "serde_json",
- "tracing",
-]
-
-[[package]]
-name = "lizt_rest"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "env_logger",
- "futures",
- "lizt_core",
- "log",
- "reqwest",
- "rust_decimal",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "lizt_symbols"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "futures",
- "lizt_core",
- "lizt_rest",
- "log",
- "regex",
- "tokio",
-]
 
 [[package]]
 name = "lock_api"
@@ -2135,6 +2106,22 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+]
+
+[[package]]
+name = "rest"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "common",
+ "env_logger",
+ "futures",
+ "log",
+ "reqwest",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -2833,6 +2820,19 @@ name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "symbols"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "common",
+ "futures",
+ "log",
+ "regex",
+ "rest",
+ "tokio",
+]
 
 [[package]]
 name = "syn"

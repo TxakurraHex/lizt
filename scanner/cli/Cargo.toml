@@ -1,0 +1,23 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "lizt"
+path = "src/main.rs"
+
+[dependencies]
+inventory = { path = "../inventory" }
+rest = { path = "../rest" }
+common = { path = "../../core/common" }
+symbols = { path = "../symbols" }
+db = { path = "../../core/db" }
+
+futures = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+sqlx = { workspace = true }
+log4rs = { workspace = true }
+log = { workspace = true }
+inquire = { workspace = true }

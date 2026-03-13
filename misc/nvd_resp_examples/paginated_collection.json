@@ -1,0 +1,160 @@
+{
+  "resultsPerPage": 2000,
+  "startIndex": 0,
+  "totalResults": 8473,
+  "format": "NVD_CVE",
+  "version": "2.0",
+  "timestamp": "2024-01-15T10:00:00.000",
+  "vulnerabilities": [
+    {
+      "cve": {
+        "id": "CVE-2002-1949",
+        "sourceIdentifier": "cve@mitre.org",
+        "published": "2002-12-31T05:00:00.000",
+        "lastModified": "2008-09-05T20:31:55.997",
+        "vulnStatus": "Analyzed",
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "The NAS Administration Web Page for Iomega NAS A300U transmits passwords in cleartext..."
+          }
+        ],
+        "metrics": {
+          "cvssMetricV2": [
+            {
+              "source": "nvd@nist.gov",
+              "type": "Primary",
+              "cvssData": {
+                "version": "2.0",
+                "vectorString": "AV:N/AC:L/Au:N/C:P/I:N/A:N",
+                "accessVector": "NETWORK",
+                "accessComplexity": "LOW",
+                "authentication": "NONE",
+                "confidentialityImpact": "PARTIAL",
+                "integrityImpact": "NONE",
+                "availabilityImpact": "NONE",
+                "baseScore": 5.0
+              },
+              "baseSeverity": "MEDIUM",
+              "exploitabilityScore": 10.0,
+              "impactScore": 2.9,
+              "acInsufInfo": false,
+              "obtainAllPrivilege": false,
+              "obtainUserPrivilege": false,
+              "obtainOtherPrivilege": false
+            }
+          ]
+        },
+        "weaknesses": [],
+        "configurations": [],
+        "references": [
+          {
+            "url": "http://example.com/advisory",
+            "source": "cve@mitre.org"
+          }
+        ]
+      }
+    },
+    {
+      "cve": {
+        "id": "CVE-2021-44228",
+        "sourceIdentifier": "security@apache.org",
+        "published": "2021-12-10T10:15:00.000",
+        "lastModified": "2023-04-03T18:15:09.590",
+        "vulnStatus": "Analyzed",
+        "cisaExploitAdd": "2021-12-10",
+        "cisaActionDue": "2021-12-24",
+        "cisaRequiredAction": "Apply updates per vendor instructions.",
+        "cisaVulnerabilityName": "Apache Log4j2 Remote Code Execution Vulnerability",
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "Apache Log4j2 2.0-beta9 through 2.15.0 JNDI features used in configuration, log messages, and parameters do not protect against attacker-controlled LDAP and other JNDI related endpoints..."
+          }
+        ],
+        "metrics": {
+          "cvssMetricV31": [
+            {
+              "source": "nvd@nist.gov",
+              "type": "Primary",
+              "cvssData": {
+                "version": "3.1",
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+                "attackVector": "NETWORK",
+                "attackComplexity": "LOW",
+                "privilegesRequired": "NONE",
+                "userInteraction": "NONE",
+                "scope": "CHANGED",
+                "confidentialityImpact": "HIGH",
+                "integrityImpact": "HIGH",
+                "availabilityImpact": "HIGH",
+                "baseScore": 10.0,
+                "baseSeverity": "CRITICAL"
+              },
+              "exploitabilityScore": 3.9,
+              "impactScore": 6.0
+            },
+            {
+              "source": "security@apache.org",
+              "type": "Secondary",
+              "cvssData": {
+                "version": "3.1",
+                "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:H",
+                "baseScore": 9.0,
+                "baseSeverity": "CRITICAL"
+              }
+            }
+          ]
+        },
+        "weaknesses": [
+          {
+            "source": "nvd@nist.gov",
+            "type": "Primary",
+            "description": [
+              {
+                "lang": "en",
+                "value": "CWE-917"
+              }
+            ]
+          }
+        ],
+        "configurations": [
+          {
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:apache:log4j:*:*:*:*:*:*:*:*",
+                    "versionStartIncluding": "2.0-beta9",
+                    "versionEndExcluding": "2.15.0",
+                    "matchCriteriaId": "some-uuid-here"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "references": [
+          {
+            "url": "https://logging.apache.org/log4j/2.x/security.html",
+            "source": "security@apache.org",
+            "tags": [
+              "Vendor Advisory"
+            ]
+          },
+          {
+            "url": "https://www.kb.cert.org/vuls/id/930724",
+            "source": "nvd@nist.gov",
+            "tags": [
+              "Third Party Advisory",
+              "US Government Resource"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
