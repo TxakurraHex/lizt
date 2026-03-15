@@ -1,5 +1,9 @@
+use crate::rows::symbol_observation_rows::SymbolObservationRow;
 use crate::rows::symbol_rows::{CveSymbolWithCpeRow, CveSymbolsRow};
-use common::symbol::{SourceLang, Symbol, SymbolConfidence};
+use common::{
+    symbol::{SourceLang, Symbol, SymbolConfidence},
+    symbol_observation::SymbolObservation,
+};
 use sqlx::PgPool;
 use std::str::FromStr;
 
@@ -75,4 +79,30 @@ pub async fn get_symbols_with_ids(
             })
             .collect()
     })
+}
+
+pub async fn get_symbol_observations(pool: &PgPool) -> Result<Vec<SymbolObservation>, sqlx::Error> {
+    sqlx::query_as::<_, SymbolObservationRow>(
+        r#"
+        SELECT
+            cs.id AS cve_symbol_id,
+            cs.name AS symbol_name,
+            cs.cve_id,
+            sa.total_calls,
+            sa.distinct_pids,
+            sa.last_seen,
+            (
+                SELECT string_agg(DISTINCT so.process_name, ', ')
+                FROM symbol_observations so
+                WHERE so.cve_symbol_id = cs.id AND so.process_name IS NOT NULL
+            ) AS recent_processes
+        FROM cve_symbols cs
+        JOIN symbol_activity sa ON sa.cve_symbol_id = cs.id
+        ORDER BY sa.total_calls DESC
+        LIMIT 200
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map(|rows| rows.into_iter().map(SymbolObservation::from).collect())
 }

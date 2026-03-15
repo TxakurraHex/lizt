@@ -1,7 +1,10 @@
 pub mod cpe;
 pub mod cve;
 pub mod finding_record;
+pub mod finding_summary;
 pub mod github_issue;
+pub mod inventory_entry;
 pub mod process_runner;
 pub mod scan;
 pub mod symbol;
+pub mod symbol_observation;

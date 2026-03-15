@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use common::cve::Cve;
 use common::symbol::Symbol;
-use log::info;
 use std::collections::HashMap;
 
 #[async_trait]

@@ -1,5 +1,7 @@
 use crate::rows::cpe_rows::CpeRow;
+use crate::rows::inventory_entry_rows::InventoryEntryRow;
 use common::cpe::CpeEntry;
+use common::inventory_entry::InventoryEntry;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -48,4 +50,28 @@ pub async fn get_all(pool: &PgPool) -> Result<Vec<CpeEntry>, sqlx::Error> {
         .fetch_all(pool)
         .await?;
     Ok(rows.into_iter().map(CpeEntry::from).collect())
+}
+
+pub async fn get_inventory_entries(pool: &PgPool) -> Result<Vec<InventoryEntry>, sqlx::Error> {
+    sqlx::query_as::<_, InventoryEntryRow>(
+        r#"
+        SELECT
+            c.name,
+            c.product,
+            c.vendor,
+            c.version,
+            c.source,
+            c.cpe,
+            c.cpe_confidence,
+            COUNT(DISTINCT f.cve_id) AS cve_count,
+            c.last_seen
+        FROM cpes c
+        LEFT JOIN findings f ON f.cpe_id = c.id
+        GROUP BY c.id
+        ORDER BY cve_count DESC NULLS LAST, c.product ASC
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map(|rows| rows.into_iter().map(InventoryEntry::from).collect())
 }
