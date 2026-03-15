@@ -50,3 +50,17 @@ pub struct SymbolObservationsRow {
     pub observed_at: DateTime<Utc>,
     pub call_count: i64,
 }
+
+#[derive(Debug, FromRow)]
+pub struct CveSymbolWithActivityRow {
+    pub id: i64,
+    pub cve_id: String,
+    pub name: String,
+    pub source: String,
+    pub confidence: String,
+    pub source_lang: String,
+    pub context: String,
+    pub total_calls: Option<i64>,
+    pub distinct_pids: Option<i64>,
+    pub last_seen: Option<DateTime<Utc>>,
+}

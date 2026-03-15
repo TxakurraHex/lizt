@@ -5,7 +5,7 @@ members = [
     "scanner/symbols",
     "core/common",
     "scanner/cli",
-    "core/db",
+    "core/db", "scanner/web",
 ]
 exclude = ["monitor"]
 resolver = "2"

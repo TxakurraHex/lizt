@@ -72,7 +72,7 @@ the monitor is Linux-only due to its use of Linux kernel interfaces.
 
 ```bash
 export DATABASE_URL="postgres://user:password@localhost/lizt"
-export API_KEY="your-nvd-api-key"       # Optional — enables 50 req/30s vs 5 req/30s
+export NVD_API_KEY="your-nvd-api-key"       # Optional — enables 50 req/30s vs 5 req/30s
 ```
 
 For the `reset` subcommand only:
@@ -130,7 +130,7 @@ sudo setcap cap_bpf,cap_perfmon+eip ./monitor/target/release/lizt_monitord
 ```bash
 # Create /etc/lizt/env (mode 600) with credentials:
 #   DATABASE_URL=postgres://user:password@localhost/lizt
-#   API_KEY=your-nvd-api-key
+#   NVD_API_KEY=your-nvd-api-key
 sudo install -Dm600 monitor/conf/env.example /etc/lizt/env
 # Edit /etc/lizt/env with real values, then install and start the service:
 cd monitor
@@ -248,7 +248,7 @@ refs tagged only with `Press/Media Coverage` or `Exploit`, reducing wasted rate 
 Requests are automatically throttled to stay within NVD limits:
 
 - **Without API key**: 5 requests per 30 seconds
-- **With `API_KEY`**: 50 requests per 30 seconds
+- **With `NVD_API_KEY`**: 50 requests per 30 seconds
 - **OSV**: 25 requests per 30 seconds (no key required)
 
 All REST methods use bounded retry loops with a maximum of `MAX_RETRIES` attempts; failed

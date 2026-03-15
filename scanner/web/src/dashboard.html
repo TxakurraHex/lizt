@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LIZT — Vulnerability Dashboard</title>
+<style>
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --border:   #30363d;
+    --text:     #e6edf3;
+    --muted:    #8b949e;
+    --accent:   #58a6ff;
+    --red:      #f85149;
+    --orange:   #d29922;
+    --green:    #3fb950;
+    --purple:   #bc8cff;
+    --radius:   6px;
+    --font:     'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; }
+
+  /* ── Layout ── */
+  #app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    height: 52px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header .logo { font-weight: 700; font-size: 18px; color: var(--accent); letter-spacing: 2px; }
+  nav { display: flex; gap: 4px; }
+  nav button {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    padding: 6px 14px; border-radius: var(--radius); font-size: 13px; font-family: var(--font);
+    transition: background .15s, color .15s;
+  }
+  nav button:hover  { background: rgba(88,166,255,.08); color: var(--text); }
+  nav button.active { background: rgba(88,166,255,.15); color: var(--accent); font-weight: 600; }
+
+  #refresh-btn {
+    margin-left: auto; background: none; border: 1px solid var(--border);
+    color: var(--muted); cursor: pointer; padding: 5px 14px; border-radius: var(--radius);
+    font-size: 12px; font-family: var(--font); transition: border-color .15s, color .15s;
+  }
+  #refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  main { flex: 1; padding: 24px; max-width: 1400px; margin: 0 auto; width: 100%; }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .8px; color: var(--muted);
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  td { padding: 10px 12px; border-bottom: 1px solid rgba(48,54,61,.5); vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  /* ── Cards / panels ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+  }
+  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+
+  /* ── Pills / badges ── */
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+  }
+  .badge-critical { background: rgba(248,81,73,.15); color: var(--red);    border: 1px solid rgba(248,81,73,.3); }
+  .badge-high     { background: rgba(210,153,34,.15); color: var(--orange); border: 1px solid rgba(210,153,34,.3); }
+  .badge-medium   { background: rgba(88,166,255,.12); color: var(--accent); border: 1px solid rgba(88,166,255,.25); }
+  .badge-low      { background: rgba(63,185,80,.1);   color: var(--green);  border: 1px solid rgba(63,185,80,.25); }
+  .badge-kev      { background: rgba(248,81,73,.2);   color: var(--red);    border: 1px solid var(--red); }
+  .badge-called   { background: rgba(188,140,255,.15); color: var(--purple); border: 1px solid rgba(188,140,255,.3); }
+  .badge-none     { background: rgba(139,148,158,.08); color: var(--muted);  border: 1px solid var(--border); }
+
+  /* ── Score bar ── */
+  .score-bar { display: flex; align-items: center; gap: 8px; }
+  .score-bar .val { font-weight: 700; min-width: 36px; }
+  .bar-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; }
+  .bar-fill  { height: 100%; border-radius: 2px; }
+
+  /* ── CVE link ── */
+  .cve-link { color: var(--accent); cursor: pointer; text-decoration: none; }
+  .cve-link:hover { text-decoration: underline; }
+
+  /* ── Detail panel ── */
+  #detail-panel {
+    position: fixed; right: 0; top: 0; bottom: 0; width: 520px;
+    background: var(--surface); border-left: 1px solid var(--border);
+    padding: 24px; overflow-y: auto; z-index: 20;
+    transform: translateX(100%); transition: transform .2s ease;
+  }
+  #detail-panel.open { transform: translateX(0); }
+  #detail-panel .close-btn {
+    position: absolute; top: 16px; right: 16px;
+    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px;
+  }
+  #detail-panel h3 { font-size: 15px; margin-bottom: 12px; color: var(--accent); }
+  #detail-panel p  { color: var(--muted); line-height: 1.6; margin-bottom: 16px; font-size: 13px; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .meta-item label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 3px; }
+  .meta-item span  { font-weight: 600; }
+
+  /* ── Symbol table in detail ── */
+  .sym-row { display: flex; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .sym-row .sym-name { font-family: monospace; color: var(--text); flex: 1; word-break: break-all; }
+  .sym-row .sym-calls { color: var(--purple); font-size: 12px; white-space: nowrap; }
+
+  /* ── Loading / empty ── */
+  .state-msg { color: var(--muted); padding: 40px 0; text-align: center; }
+
+  /* ── Stat strip ── */
+  .stat-strip { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 20px; flex: 1; min-width: 140px;
+  }
+  .stat-box .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 4px; }
+  .stat-box .value { font-size: 24px; font-weight: 700; }
+  .stat-box .value.red    { color: var(--red); }
+  .stat-box .value.orange { color: var(--orange); }
+  .stat-box .value.purple { color: var(--purple); }
+  .stat-box .value.green  { color: var(--green); }
+
+  /* ── Search box ── */
+  .search-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .search-row input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text); padding: 7px 12px;
+    font-family: var(--font); font-size: 13px;
+  }
+  .search-row input:focus { outline: none; border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">LIZT</div>
+    <nav>
+      <button class="active" onclick="switchTab('findings')">Findings</button>
+      <button onclick="switchTab('observations')">eBPF Activity</button>
+      <button onclick="switchTab('inventory')">Inventory</button>
+    </nav>
+    <button id="refresh-btn" onclick="reload()">↺ Refresh</button>
+  </header>
+  <main id="main-content">
+    <div class="state-msg">Loading…</div>
+  </main>
+</div>
+
+<!-- CVE Detail Slide-over -->
+<div id="detail-panel">
+  <button class="close-btn" onclick="closeDetail()">✕</button>
+  <div id="detail-body"></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
+let currentTab = 'findings';
+let cache = {};
+
+// ─────────────────────────────────────────────
+// Routing
+// ─────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('nav button').forEach((b, i) => {
+    const tabs = ['findings', 'observations', 'inventory'];
+    b.classList.toggle('active', tabs[i] === tab);
+  });
+  cache = {}; // bust cache on tab switch
+  reload();
+}
+
+function reload() {
+  const main = document.getElementById('main-content');
+  main.innerHTML = '<div class="state-msg">Loading…</div>';
+  if (currentTab === 'findings')     renderFindings();
+  if (currentTab === 'observations') renderObservations();
+  if (currentTab === 'inventory')    renderInventory();
+}
+
+// ─────────────────────────────────────────────
+// Fetch helpers
+// ─────────────────────────────────────────────
+async function fetchJSON(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+function err(msg) {
+  document.getElementById('main-content').innerHTML =
+    `<div class="state-msg" style="color:var(--red)">Error: ${msg}</div>`;
+}
+
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+function cvssColor(score) {
+  if (score == null) return 'none';
+  if (score >= 9.0) return 'critical';
+  if (score >= 7.0) return 'high';
+  if (score >= 4.0) return 'medium';
+  return 'low';
+}
+
+function cvssBarColor(score) {
+  if (score == null) return 'var(--muted)';
+  if (score >= 9.0) return 'var(--red)';
+  if (score >= 7.0) return 'var(--orange)';
+  if (score >= 4.0) return 'var(--accent)';
+  return 'var(--green)';
+}
+
+function scoreBar(score) {
+  if (score == null) return '<span style="color:var(--muted)">—</span>';
+  const pct = Math.round((score / 10) * 100);
+  return `<div class="score-bar">
+    <span class="val badge badge-${cvssColor(score)}">${score}</span>
+    <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${cvssBarColor(score)}"></div></div>
+  </div>`;
+}
+
+function rankBadge(r) {
+  if (r == null) return '<span class="badge badge-none">unranked</span>';
+  const v = parseFloat(r).toFixed(1);
+  if (r >= 8)  return `<span class="badge badge-critical">${v}</span>`;
+  if (r >= 5)  return `<span class="badge badge-high">${v}</span>`;
+  if (r >= 2)  return `<span class="badge badge-medium">${v}</span>`;
+  return `<span class="badge badge-low">${v}</span>`;
+}
+
+function symbolBadge(called, present) {
+  if (called) return '<span class="badge badge-called">called</span>';
+  if (present) return '<span class="badge badge-medium">present</span>';
+  return '<span class="badge badge-none">none</span>';
+}
+
+function fmtDate(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleString();
+}
+
+function filterRows(rows, query, fields) {
+  if (!query) return rows;
+  const q = query.toLowerCase();
+  return rows.filter(r => fields.some(f => (r[f] || '').toLowerCase().includes(q)));
+}
+
+// ─────────────────────────────────────────────
+// Findings tab
+// ─────────────────────────────────────────────
+async function renderFindings() {
+  try {
+    const data = await fetchJSON('/api/findings');
+    cache.findings = data;
+
+    const critical = data.filter(r => r.cvss_score >= 9).length;
+    const high     = data.filter(r => r.cvss_score >= 7 && r.cvss_score < 9).length;
+    const kev      = data.filter(r => r.kev_listed).length;
+    const called   = data.filter(r => r.symbol_called).length;
+
+    document.getElementById('main-content').innerHTML = `
+      <div class="stat-strip">
+        <div class="stat-box"><div class="label">Total Findings</div><div class="value">${data.length}</div></div>
+        <div class="stat-box"><div class="label">Critical (9+)</div><div class="value red">${critical}</div></div>
+        <div class="stat-box"><div class="label">High (7–9)</div><div class="value orange">${high}</div></div>
+        <div class="stat-box"><div class="label">KEV Listed</div><div class="value red">${kev}</div></div>
+        <div class="stat-box"><div class="label">Symbol Called</div><div class="value purple">${called}</div></div>
+      </div>
+      <div class="card">
+        <div class="search-row">
+          <input id="findings-search" type="text" placeholder="Filter by CVE, package…" oninput="applyFindingsFilter()" />
+        </div>
+        <div class="table-wrap">
+          <table id="findings-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>CVE</th>
+                <th>Package</th>
+                <th>CVSS</th>
+                <th>KEV</th>
+                <th>Symbol</th>
+                <th>Version</th>
+              </tr>
+            </thead>
+            <tbody id="findings-body"></tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    applyFindingsFilter();
+  } catch(e) { err(e.message); }
+}
+
+function applyFindingsFilter() {
+  const q = (document.getElementById('findings-search')?.value || '').toLowerCase();
+  const rows = filterRows(cache.findings || [], q, ['cve_id', 'cpe_name', 'cpe_product']);
+  const tbody = document.getElementById('findings-body');
+  if (!tbody) return;
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${rankBadge(r.rank_score)}</td>
+      <td><a class="cve-link" onclick="openDetail('${r.cve_id}')">${r.cve_id}</a></td>
+      <td>${r.cpe_product}<br><span style="color:var(--muted);font-size:11px">${r.cpe_name}</span></td>
+      <td>${scoreBar(r.cvss_score)}</td>
+      <td>${r.kev_listed ? '<span class="badge badge-kev">KEV</span>' : '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${symbolBadge(r.symbol_called, r.symbol_present)}</td>
+      <td style="color:var(--muted);font-size:12px">${r.cvss_version || '—'}</td>
+    </tr>
+  `).join('');
+  if (!rows.length) tbody.innerHTML = '<tr><td colspan="7" class="state-msg">No results</td></tr>';
+}
+
+// ─────────────────────────────────────────────
+// CVE detail slide-over
+// ─────────────────────────────────────────────
+async function openDetail(cveId) {
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('detail-body').innerHTML = '<div class="state-msg">Loading…</div>';
+  try {
+    const d = await fetchJSON(`/api/cve/${encodeURIComponent(cveId)}`);
+    const cv = d.cve;
+    const syms = d.symbols;
+
+    const symHtml = syms.length
+      ? syms.map(s => `
+        <div class="sym-row">
+          <span class="sym-name">${s.name}</span>
+          <span class="badge badge-${s.confidence === 'high' ? 'green' : s.confidence === 'medium' ? 'medium' : 'none'}">${s.confidence}</span>
+          <span class="sym-calls">${s.total_calls != null ? s.total_calls + ' calls' : ''}</span>
+        </div>`).join('')
+      : '<div style="color:var(--muted);font-size:13px">No symbols extracted.</div>';
+
+    document.getElementById('detail-body').innerHTML = `
+      <h3>${cv.cve_id}</h3>
+      <p>${cv.description || 'No description available.'}</p>
+      <div class="meta-grid">
+        <div class="meta-item"><label>CVSS Score</label><span>${scoreBar(cv.cvss_score)}</span></div>
+        <div class="meta-item"><label>CVSS Version</label><span>${cv.cvss_version || '—'}</span></div>
+        <div class="meta-item"><label>KEV Listed</label><span>${cv.kev_listed ? '<span class="badge badge-kev">YES</span>' : '—'}</span></div>
+        <div class="meta-item"><label>Published</label><span style="font-size:12px">${fmtDate(cv.published_at)}</span></div>
+      </div>
+      ${cv.cvss_vector ? `<div style="margin-bottom:16px"><label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">Vector</label><div style="font-family:monospace;font-size:12px;color:var(--muted);margin-top:4px;word-break:break-all">${cv.cvss_vector}</div></div>` : ''}
+      <h3>Symbols (${syms.length})</h3>
+      ${symHtml}
+      <div style="margin-top:16px">
+        <a href="https://nvd.nist.gov/vuln/detail/${cv.cve_id}" target="_blank" style="color:var(--accent);font-size:12px">View on NVD ↗</a>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('detail-body').innerHTML =
+      `<div class="state-msg" style="color:var(--red)">Error: ${e.message}</div>`;
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open');
+}
+
+// ─────────────────────────────────────────────
+// eBPF Observations tab
+// ─────────────────────────────────────────────
+async function renderObservations() {
+  try {
+    const data = await fetchJSON('/api/observations');
+
+    if (!data.length) {
+      document.getElementById('main-content').innerHTML =
+        '<div class="state-msg">No runtime observations yet — is <code>lizt_monitord</code> running?</div>';
+      return;
+    }
+
+    const totalCalls = data.reduce((s, r) => s + (r.total_calls || 0), 0);
+
+    document.getElementById('main-content').innerHTML = `
+      <div class="stat-strip">
+        <div class="stat-box"><div class="label">Active Symbols</div><div class="value purple">${data.length}</div></div>
+        <div class="stat-box"><div class="label">Total Calls</div><div class="value">${totalCalls.toLocaleString()}</div></div>
+      </div>
+      <div class="card">
+        <div class="search-row">
+          <input id="obs-search" type="text" placeholder="Filter by symbol, CVE…" oninput="applyObsFilter()" />
+        </div>
+        <div class="table-wrap">
+          <table id="obs-table">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>CVE</th>
+                <th>Total Calls</th>
+                <th>Distinct PIDs</th>
+                <th>Processes</th>
+                <th>Last Seen</th>
+              </tr>
+            </thead>
+            <tbody id="obs-body"></tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    cache.observations = data;
+    applyObsFilter();
+  } catch(e) { err(e.message); }
+}
+
+function applyObsFilter() {
+  const q = (document.getElementById('obs-search')?.value || '').toLowerCase();
+  const rows = filterRows(cache.observations || [], q, ['symbol_name', 'cve_id', 'recent_processes']);
+  const tbody = document.getElementById('obs-body');
+  if (!tbody) return;
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td style="font-family:monospace">${r.symbol_name}</td>
+      <td><a class="cve-link" onclick="openDetail('${r.cve_id}')">${r.cve_id}</a></td>
+      <td><span class="badge badge-called">${(r.total_calls || 0).toLocaleString()}</span></td>
+      <td>${r.distinct_pids || '—'}</td>
+      <td style="color:var(--muted);font-size:12px">${r.recent_processes || '—'}</td>
+      <td style="color:var(--muted);font-size:12px">${fmtDate(r.last_seen)}</td>
+    </tr>
+  `).join('');
+  if (!rows.length) tbody.innerHTML = '<tr><td colspan="6" class="state-msg">No results</td></tr>';
+}
+
+// ─────────────────────────────────────────────
+// Inventory tab
+// ─────────────────────────────────────────────
+async function renderInventory() {
+  try {
+    const data = await fetchJSON('/api/inventory');
+
+    document.getElementById('main-content').innerHTML = `
+      <div class="stat-strip">
+        <div class="stat-box"><div class="label">Tracked Packages</div><div class="value">${data.length}</div></div>
+        <div class="stat-box"><div class="label">With CPE</div><div class="value green">${data.filter(r=>r.cpe).length}</div></div>
+        <div class="stat-box"><div class="label">CVE Exposures</div><div class="value orange">${data.reduce((s,r)=>s+(r.cve_count||0),0)}</div></div>
+      </div>
+      <div class="card">
+        <div class="search-row">
+          <input id="inv-search" type="text" placeholder="Filter by package name, vendor…" oninput="applyInvFilter()" />
+        </div>
+        <div class="table-wrap">
+          <table id="inv-table">
+            <thead>
+              <tr>
+                <th>Package</th>
+                <th>Vendor</th>
+                <th>Version</th>
+                <th>Source</th>
+                <th>CPE</th>
+                <th>Confidence</th>
+                <th>CVEs</th>
+                <th>Last Seen</th>
+              </tr>
+            </thead>
+            <tbody id="inv-body"></tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    cache.inventory = data;
+    applyInvFilter();
+  } catch(e) { err(e.message); }
+}
+
+function applyInvFilter() {
+  const q = (document.getElementById('inv-search')?.value || '').toLowerCase();
+  const rows = filterRows(cache.inventory || [], q, ['name', 'product', 'vendor', 'cpe']);
+  const tbody = document.getElementById('inv-body');
+  if (!tbody) return;
+  tbody.innerHTML = rows.map(r => {
+    const conf = r.cpe_confidence;
+    const confClass = conf === 'high' ? 'green' : conf === 'medium' ? 'medium' : 'none';
+    return `
+    <tr>
+      <td><span style="font-weight:600">${r.product}</span><br><span style="color:var(--muted);font-size:11px">${r.name}</span></td>
+      <td style="color:var(--muted)">${r.vendor || '—'}</td>
+      <td style="font-family:monospace;font-size:12px">${r.version || '—'}</td>
+      <td><span class="badge badge-none">${r.source}</span></td>
+      <td style="font-family:monospace;font-size:11px;color:var(--muted);word-break:break-all">${r.cpe || '—'}</td>
+      <td><span class="badge badge-${confClass}">${conf}</span></td>
+      <td>${r.cve_count ? `<span class="badge badge-${r.cve_count > 5 ? 'high' : 'medium'}">${r.cve_count}</span>` : '—'}</td>
+      <td style="color:var(--muted);font-size:11px">${fmtDate(r.last_seen)}</td>
+    </tr>`;
+  }).join('');
+  if (!rows.length) tbody.innerHTML = '<tr><td colspan="8" class="state-msg">No results</td></tr>';
+}
+
+// ─────────────────────────────────────────────
+// Boot
+// ─────────────────────────────────────────────
+reload();
+</script>
+</body>
+</html>

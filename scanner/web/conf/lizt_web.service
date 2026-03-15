@@ -1,0 +1,22 @@
+[Unit]
+Description=lizt Web Dashboard
+After=network.target postgresql.service
+Wants=lizt_monitord.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/lizt_web
+EnvironmentFile=/etc/lizt/env
+Restart=on-failure
+RestartSec=5
+
+User=lizt
+Group=lizt
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/log/lizt
+
+[Install]
+WantedBy=multi-user.target

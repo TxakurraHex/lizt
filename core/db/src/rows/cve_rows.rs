@@ -30,3 +30,16 @@ impl From<CveRow> for Cve {
         }
     }
 }
+
+#[derive(Debug, FromRow)]
+pub struct CveWithKevRow {
+    pub cve_id: String,
+    pub description: Option<String>,
+    pub cvss_score: Option<Decimal>,
+    pub cvss_vector: Option<String>,
+    pub cvss_version: Option<String>,
+    pub published_at: Option<DateTime<Utc>>,
+    pub first_seen: DateTime<Utc>,
+    pub last_seen: DateTime<Utc>,
+    pub kev_listed: bool,
+}

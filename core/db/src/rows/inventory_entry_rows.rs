@@ -21,6 +21,7 @@ impl From<InventoryEntryRow> for InventoryEntry {
             name: row.name,
             product: row.product,
             vendor: row.vendor,
+            version: row.version,
             source: row.source,
             cpe: row.cpe,
             cpe_confidence: row.cpe_confidence,

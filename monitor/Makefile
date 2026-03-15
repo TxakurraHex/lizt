@@ -16,7 +16,7 @@ install:
 	mkdir -p $(LOG_DIR)
 	systemctl daemon-reload
 	@echo "Run: systemctl enable --now lizt_monitord"
-	@[ -f $(CONF_DIR)/env ] || echo "WARNING: $(CONF_DIR)/env not found — create it with DATABASE_URL and API_KEY"
+	@[ -f $(CONF_DIR)/env ] || echo "WARNING: $(CONF_DIR)/env not found — create it with DATABASE_URL and NVD_API_KEY"
 	
 clean:
 	cargo clean

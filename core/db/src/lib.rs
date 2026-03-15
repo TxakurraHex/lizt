@@ -13,6 +13,7 @@ use sqlx::postgres::PgPoolOptions;
 
 pub async fn connect() -> Result<PgPool, Box<dyn std::error::Error>> {
     let db_url = std::env::var("DATABASE_URL")?;
+
     debug!("Connecting to database with URL: {db_url}");
     let pool = PgPoolOptions::new()
         .max_connections(5)

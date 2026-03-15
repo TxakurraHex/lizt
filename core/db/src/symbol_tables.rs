@@ -1,5 +1,6 @@
 use crate::rows::symbol_observation_rows::SymbolObservationRow;
-use crate::rows::symbol_rows::{CveSymbolWithCpeRow, CveSymbolsRow};
+use crate::rows::symbol_rows::{CveSymbolWithActivityRow, CveSymbolWithCpeRow, CveSymbolsRow};
+use chrono::{DateTime, Utc};
 use common::{
     symbol::{SourceLang, Symbol, SymbolConfidence},
     symbol_observation::SymbolObservation,
@@ -105,4 +106,55 @@ pub async fn get_symbol_observations(pool: &PgPool) -> Result<Vec<SymbolObservat
     .fetch_all(pool)
     .await
     .map(|rows| rows.into_iter().map(SymbolObservation::from).collect())
+}
+
+pub async fn get_symbols_for_cve_with_activity(
+    pool: &PgPool,
+    cve_id: &str,
+) -> Result<Vec<(i64, Symbol, Option<i64>, Option<i64>, Option<DateTime<Utc>>)>, sqlx::Error> {
+    sqlx::query_as::<_, CveSymbolWithActivityRow>(
+        r#"
+        SELECT
+            cs.id,
+            cs.cve_id,
+            cs.name,
+            cs.source,
+            cs.confidence,
+            cs.source_lang,
+            cs.context,
+            sa.total_calls,
+            sa.distinct_pids,
+            sa.last_seen
+        FROM cve_symbols as cs
+        LEFT JOIN symbol_activity sa ON sa.cve_symbol_id = cs.id
+        WHERE cs.cve_id = $1
+        ORDER BY sa.total_calls DESC NULLS LAST
+        "#,
+    )
+    .bind(cve_id)
+    .fetch_all(pool)
+    .await
+    .map(|rows| {
+        rows.into_iter()
+            .map(|row| {
+                let symbol = Symbol {
+                    name: row.name,
+                    source_lang: SourceLang::from_str(&row.source_lang)
+                        .unwrap_or(SourceLang::Unknown),
+                    confidence: SymbolConfidence::from_str(&row.confidence)
+                        .unwrap_or(SymbolConfidence::Low),
+                    cve_id: row.cve_id,
+                    source: row.source,
+                    context: row.context,
+                };
+                (
+                    row.id,
+                    symbol,
+                    row.total_calls,
+                    row.distinct_pids,
+                    row.last_seen,
+                )
+            })
+            .collect()
+    })
 }

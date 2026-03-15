@@ -1,27 +1,27 @@
 use clap::{Parser, Subcommand};
-use inquire::error::InquireError;
-use inquire::{Confirm, Select, Text};
 use common::cve::Cve;
 use common::finding_record::FindingRecord;
 use common::scan::ScanStatus;
 use common::symbol::Symbol;
+use inquire::error::InquireError;
+use inquire::{Confirm, Select, Text};
 use inventory::inventory::{Inventory, Source};
 use inventory::sources::dpkg_inv_source::DpkgSource;
 use inventory::sources::linux_kernel_inv_source::LinuxKernelSource;
 use inventory::sources::pip_inv_source::PipSource;
 use inventory::sources::ubuntu_inv_source::UbuntuSource;
+use log::{debug, error, info};
 use rest::cpe_resolver::CpeResolver;
 use rest::rest_client::LiztRestClient;
-use symbols::scrapers::description_scraper::DescriptionScraper;
-use symbols::scrapers::git_scraper::GithubScraper;
-use symbols::scrapers::osv_scraper::OsvScraper;
-use symbols::symbol_extractor::{CveSymbolExtractor, Scraper};
-use log::{debug, error, info};
 use sqlx::types::Uuid;
 use sqlx::types::chrono::Utc;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use symbols::scrapers::description_scraper::DescriptionScraper;
+use symbols::scrapers::git_scraper::GithubScraper;
+use symbols::scrapers::osv_scraper::OsvScraper;
+use symbols::symbol_extractor::{CveSymbolExtractor, Scraper};
 
 #[derive(Parser)]
 #[command(

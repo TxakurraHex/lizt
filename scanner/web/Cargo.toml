@@ -1,0 +1,24 @@
+[package]
+name = "web"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "lizt_web"
+path = "src/main.rs"
+
+[dependencies]
+common = { path = "../../core/common" }
+db = { path = "../../core/db" }
+
+axum = { version = "0.8", features = ["macros"] }
+tokio = { workspace = true }
+sqlx = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+rust_decimal = { workspace = true }
+log = { workspace = true }
+log4rs = { workspace = true }
+tower-http = { version = "0.6", features = ["cors"] }
