@@ -1,0 +1,18 @@
+[package]
+name = "pipeline"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+common = { workspace = true }
+db = { workspace = true }
+io-inventory = { workspace = true }
+io-nvd = { workspace = true }
+io-symbols = { workspace = true }
+tokio = { workspace = true }
+futures = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }

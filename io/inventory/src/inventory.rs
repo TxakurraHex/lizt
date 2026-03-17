@@ -70,7 +70,7 @@ fn vendor_trie() -> &'static Trie<String, (&'static str, &'static str)> {
     })
 }
 
-pub trait Source {
+pub trait Source: Send {
     fn name(&self) -> &str;
     fn collect(&self) -> Vec<CpeEntry>;
 }

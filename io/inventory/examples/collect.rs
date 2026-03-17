@@ -1,8 +1,10 @@
-use inventory::inventory::{Inventory, Source};
-use inventory::sources::dpkg_inv_source::DpkgSource;
-use inventory::sources::linux_kernel_inv_source::LinuxKernelSource;
-use inventory::sources::pip_inv_source::PipSource;
-use inventory::sources::ubuntu_inv_source::UbuntuSource;
+use io_inventory::{
+    inventory::{Inventory, Source},
+    sources::{
+        dpkg_inv_source::DpkgSource, linux_kernel_inv_source::LinuxKernelSource,
+        pip_inv_source::PipSource, ubuntu_inv_source::UbuntuSource,
+    },
+};
 
 fn main() {
     let sources: Vec<Box<dyn Source>> = vec![

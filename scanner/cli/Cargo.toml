@@ -1,23 +1,19 @@
 [package]
 name = "cli"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 
 [[bin]]
 name = "lizt"
 path = "src/main.rs"
 
 [dependencies]
-inventory = { path = "../inventory" }
-rest = { path = "../rest" }
-common = { path = "../../core/common" }
-symbols = { path = "../symbols" }
-db = { path = "../../core/db" }
-
-futures = { workspace = true }
-clap = { workspace = true }
+common = { workspace = true }
+db = { workspace = true }
+pipeline = { workspace = true }
 tokio = { workspace = true }
 sqlx = { workspace = true }
-log4rs = { workspace = true }
-log = { workspace = true }
+clap = { workspace = true }
 inquire = { workspace = true }
+log = { workspace = true }
+log4rs = { workspace = true }

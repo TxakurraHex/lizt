@@ -1,8 +1,8 @@
+use super::state::AppState;
 use axum::{Json, extract::State, http::StatusCode};
 use common::finding_summary::FindingSummary;
 use rust_decimal::Decimal;
 use serde::Serialize;
-use sqlx::PgPool;
 use uuid::Uuid;
 
 #[derive(Serialize)]
@@ -41,9 +41,9 @@ impl From<FindingSummary> for FindingSummaryResponse {
 }
 
 pub async fn list(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
 ) -> Result<Json<Vec<FindingSummaryResponse>>, (StatusCode, String)> {
-    let summaries = db::findings_table::get_finding_summaries(&pool)
+    let summaries = db::findings_table::get_finding_summaries(&state.pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 

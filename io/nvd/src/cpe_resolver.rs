@@ -1,13 +1,13 @@
-use crate::rest_client::LiztRestClient;
+use crate::client::LiztClient;
 use common::cpe::{Cpe, CpeEntry};
 use std::sync::Arc;
 
 pub struct CpeResolver {
-    client: Arc<LiztRestClient>,
+    client: Arc<LiztClient>,
 }
 
 impl CpeResolver {
-    pub fn new(client: Arc<LiztRestClient>) -> Self {
+    pub fn new(client: Arc<LiztClient>) -> Self {
         Self { client }
     }
 

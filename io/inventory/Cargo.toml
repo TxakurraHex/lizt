@@ -1,0 +1,13 @@
+[package]
+name = "io-inventory"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+common = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+regex = { workspace = true }
+radix_trie = { workspace = true }
+tracing = { workspace = true }
+log = { workspace = true }

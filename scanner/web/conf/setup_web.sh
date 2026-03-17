@@ -4,7 +4,7 @@
 # Stop on failure
 set -euo pipefail
 
-BINARY="target/debug/lizt_web"
+BINARY="target/release/lizt_web"
 BIN_DIR="/usr/bin"
 CONF_DIR="/etc/lizt"
 LOG_DIR="/var/log/lizt"

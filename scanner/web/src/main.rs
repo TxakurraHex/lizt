@@ -1,9 +1,16 @@
 mod api;
 mod html;
 
-use axum::{Router, routing::get};
+use api::state::AppState;
+use axum::{
+    Router,
+    routing::{get, post},
+};
 use log::info;
+use pipeline::client_from_env;
 use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::sync::{Mutex, broadcast};
 use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
@@ -14,18 +21,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| eprintln!("log4rs config not found, using stderr"));
 
     let pool = db::connect().await?;
+    let client = client_from_env();
+    let (scan_tx, _) = broadcast::channel(32);
+
+    let state = AppState {
+        pool,
+        client,
+        scan_tx,
+        scan_running: Arc::new(Mutex::new(false)),
+    };
     let cors = CorsLayer::new().allow_origin(Any);
 
     let app = Router::new()
         // Dashboard HTML (single-page app shell)
         .route("/", get(html::dashboard))
+        // Scan control
+        .route("/api/scan", post(api::scan::start).get(api::scan::list))
+        .route("/api/scan/events", get(api::scan::events))
+        .route("/api/scan/{id}", get(api::scan::get_by_id))
         // REST API
         .route("/api/findings", get(api::findings::list))
         .route("/api/cve/{cve_id}", get(api::cve::detail))
         .route("/api/observation", get(api::observations::list))
         .route("/api/inventory", get(api::inventory::list))
         .layer(cors)
-        .with_state(pool);
+        .with_state(state);
 
     let port: u16 = std::env::var("LIZT_WEB_PORT")
         .ok()

@@ -1,18 +1,19 @@
-use crate::scrapers::description_scraper::scrape_description;
-use crate::scrapers::git_scraper::scrape_diff;
-use crate::symbol_extractor::Scraper;
 use async_trait::async_trait;
 use common::cve::Cve;
 use common::symbol::Symbol;
-use rest::rest_client::LiztRestClient;
+use io_nvd::client::LiztClient;
 use std::sync::Arc;
 
+use crate::extractor::Scraper;
+use crate::scrapers::description::scrape_description;
+use crate::scrapers::github::scrape_diff;
+
 pub struct OsvScraper {
-    client: Arc<LiztRestClient>,
+    client: Arc<LiztClient>,
 }
 
 impl OsvScraper {
-    pub fn new(client: Arc<LiztRestClient>) -> Self {
+    pub fn new(client: Arc<LiztClient>) -> Self {
         Self { client }
     }
 }

@@ -1,19 +1,21 @@
 [package]
 name = "web"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 
 [[bin]]
 name = "lizt_web"
 path = "src/main.rs"
 
 [dependencies]
-common = { path = "../../core/common" }
-db = { path = "../../core/db" }
-
-axum = { version = "0.8", features = ["macros"] }
+common = { workspace = true }
+db = { workspace = true }
+pipeline = { workspace = true }
+io-nvd = { workspace = true }       # for LiztClient type in AppState
+axum = { workspace = true }
+tower-http = { workspace = true }
 tokio = { workspace = true }
-sqlx = { workspace = true }
+tokio-stream = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
@@ -21,4 +23,5 @@ uuid = { workspace = true }
 rust_decimal = { workspace = true }
 log = { workspace = true }
 log4rs = { workspace = true }
-tower-http = { version = "0.6", features = ["cors"] }
+futures = { workspace = true }
+sqlx = { workspace = true }

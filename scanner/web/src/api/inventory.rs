@@ -1,8 +1,8 @@
+use super::state::AppState;
 use axum::{Json, extract::State, http::StatusCode};
 use chrono::{DateTime, Utc};
 use common::inventory_entry::InventoryEntry;
 use serde::Serialize;
-use sqlx::PgPool;
 
 #[derive(Serialize)]
 pub struct InventoryEntryResponse {
@@ -34,9 +34,9 @@ impl From<InventoryEntry> for InventoryEntryResponse {
 }
 
 pub async fn list(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
 ) -> Result<Json<Vec<InventoryEntryResponse>>, (StatusCode, String)> {
-    let entries = db::cpe_tables::get_inventory_entries(&pool)
+    let entries = db::cpe_tables::get_inventory_entries(&state.pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 

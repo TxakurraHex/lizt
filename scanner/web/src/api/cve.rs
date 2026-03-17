@@ -1,3 +1,4 @@
+use super::state::AppState;
 use axum::{
     Json,
     extract::{Path, State},
@@ -8,7 +9,6 @@ use common::cve::Cve;
 use common::symbol::Symbol;
 use rust_decimal::Decimal;
 use serde::Serialize;
-use sqlx::PgPool;
 
 #[derive(Serialize)]
 pub struct CveResponse {
@@ -79,15 +79,15 @@ pub struct CveDetailResponse {
 }
 
 pub async fn detail(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
     Path(cve_id): Path<String>,
 ) -> Result<Json<CveDetailResponse>, (StatusCode, String)> {
-    let (cve, kev_listed) = db::cve_tables::get_cve_with_kev(&pool, &cve_id)
+    let (cve, kev_listed) = db::cve_tables::get_cve_with_kev(&state.pool, &cve_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or_else(|| (StatusCode::NOT_FOUND, format!("{cve_id} not found")))?;
 
-    let symbols = db::symbol_tables::get_symbols_for_cve_with_activity(&pool, &cve_id)
+    let symbols = db::symbol_tables::get_symbols_for_cve_with_activity(&state.pool, &cve_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 

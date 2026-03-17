@@ -3,16 +3,18 @@ const NVD_CVE_ENDPOINT: &str = "https://services.nvd.nist.gov/rest/json/cves/2.0
 const NVD_CPE_ENDPOINT: &str = "https://services.nvd.nist.gov/rest/json/cpes/2.0";
 const OSV_ENDPOINT: &str = "https://api.osv.dev/v1/vulns";
 
-use crate::nvd::cpe_response::{NvdCpeResponse, NvdProduct};
-use crate::nvd::cve_response::{NvdCveResponse, NvdVulnerability};
-use crate::nvd::github_response::GitHubIssue;
-use crate::osv::osv_response::{OsvExtracted, OsvResponse};
 use crate::rate_limiter::RateLimiter;
+use crate::response::{
+    cpe::{NvdCpeResponse, NvdProduct},
+    cve::{NvdCveResponse, NvdVulnerability},
+    github::GitHubIssue,
+    osv::{OsvExtracted, OsvResponse},
+};
 use log::{debug, error};
 use reqwest::Client;
 use std::time::Duration;
 
-pub struct LiztRestClient {
+pub struct LiztClient {
     client: Client,
     nvd_limiter: RateLimiter,
     github_limiter: RateLimiter,
@@ -21,13 +23,10 @@ pub struct LiztRestClient {
     github_token: Option<String>,
 }
 
-impl LiztRestClient {
+impl LiztClient {
     pub fn new(nvd_api_key: Option<String>, github_token: Option<String>) -> Self {
         let mut headers = reqwest::header::HeaderMap::new();
-        headers.insert(
-            reqwest::header::USER_AGENT,
-            "NVD-CPE-Retriever/1.0".parse().unwrap(),
-        );
+        headers.insert(reqwest::header::USER_AGENT, "lizt/1.0".parse().unwrap());
 
         let client = Client::builder()
             .default_headers(headers)

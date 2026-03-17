@@ -54,50 +54,51 @@
 
   main { flex: 1; padding: 24px; max-width: 1400px; margin: 0 auto; width: 100%; }
 
+  /* ── Cards ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+  }
+
   /* ── Tables ── */
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
   th {
-    text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: .8px; color: var(--muted);
-    border-bottom: 1px solid var(--border); white-space: nowrap;
+    text-align: left; padding: 8px 12px; font-size: 11px;
+    text-transform: uppercase; letter-spacing: .7px;
+    color: var(--muted); border-bottom: 1px solid var(--border);
   }
-  td { padding: 10px 12px; border-bottom: 1px solid rgba(48,54,61,.5); vertical-align: top; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
   tr:hover td { background: rgba(255,255,255,.02); }
 
-  /* ── Cards / panels ── */
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
-  }
-  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
-
-  /* ── Pills / badges ── */
+  /* ── Badges ── */
   .badge {
-    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
     font-size: 11px; font-weight: 600; white-space: nowrap;
   }
-  .badge-critical { background: rgba(248,81,73,.15); color: var(--red);    border: 1px solid rgba(248,81,73,.3); }
-  .badge-high     { background: rgba(210,153,34,.15); color: var(--orange); border: 1px solid rgba(210,153,34,.3); }
-  .badge-medium   { background: rgba(88,166,255,.12); color: var(--accent); border: 1px solid rgba(88,166,255,.25); }
-  .badge-low      { background: rgba(63,185,80,.1);   color: var(--green);  border: 1px solid rgba(63,185,80,.25); }
-  .badge-kev      { background: rgba(248,81,73,.2);   color: var(--red);    border: 1px solid var(--red); }
-  .badge-called   { background: rgba(188,140,255,.15); color: var(--purple); border: 1px solid rgba(188,140,255,.3); }
-  .badge-none     { background: rgba(139,148,158,.08); color: var(--muted);  border: 1px solid var(--border); }
+  .badge-critical { background: rgba(248,81,73,.15);  color: #f85149; }
+  .badge-high     { background: rgba(210,153,34,.15); color: #d29922; }
+  .badge-medium   { background: rgba(88,166,255,.15); color: #58a6ff; }
+  .badge-low      { background: rgba(63,185,80,.15);  color: #3fb950; }
+  .badge-none     { background: rgba(139,148,158,.1); color: #8b949e; }
+  .badge-called   { background: rgba(188,140,255,.15);color: #bc8cff; }
+  .badge-kev      { background: rgba(248,81,73,.2);   color: #f85149; border: 1px solid rgba(248,81,73,.4); }
+  .badge-green    { background: rgba(63,185,80,.15);  color: #3fb950; }
 
   /* ── Score bar ── */
   .score-bar { display: flex; align-items: center; gap: 8px; }
-  .score-bar .val { font-weight: 700; min-width: 36px; }
-  .bar-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; }
+  .score-bar .val { min-width: 36px; }
+  .bar-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; min-width: 60px; }
   .bar-fill  { height: 100%; border-radius: 2px; }
 
   /* ── CVE link ── */
-  .cve-link { color: var(--accent); cursor: pointer; text-decoration: none; }
+  .cve-link { color: var(--accent); cursor: pointer; text-decoration: none; font-family: monospace; font-size: 12px; }
   .cve-link:hover { text-decoration: underline; }
 
-  /* ── Detail panel ── */
+  /* ── Detail slide-over ── */
   #detail-panel {
-    position: fixed; right: 0; top: 0; bottom: 0; width: 520px;
+    position: fixed; top: 52px; right: 0; bottom: 0; width: 420px;
     background: var(--surface); border-left: 1px solid var(--border);
     padding: 24px; overflow-y: auto; z-index: 20;
     transform: translateX(100%); transition: transform .2s ease;
@@ -113,9 +114,9 @@
   .meta-item label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 3px; }
   .meta-item span  { font-weight: 600; }
 
-  /* ── Symbol table in detail ── */
+  /* ── Symbol rows in detail ── */
   .sym-row { display: flex; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .sym-row .sym-name { font-family: monospace; color: var(--text); flex: 1; word-break: break-all; }
+  .sym-row .sym-name  { font-family: monospace; color: var(--text); flex: 1; word-break: break-all; }
   .sym-row .sym-calls { color: var(--purple); font-size: 12px; white-space: nowrap; }
 
   /* ── Loading / empty ── */
@@ -142,6 +143,35 @@
     font-family: var(--font); font-size: 13px;
   }
   .search-row input:focus { outline: none; border-color: var(--accent); }
+
+  /* ── Scan tab ── */
+  .scan-btn {
+    background: var(--accent); color: #fff; border: none;
+    border-radius: var(--radius); padding: 8px 20px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: opacity .15s;
+  }
+  .scan-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .scan-btn:not(:disabled):hover { opacity: .85; }
+
+  .stage-bar { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+  .stage-step { flex: 1; min-width: 0; }
+  .stage-step .track {
+    height: 4px; border-radius: 2px; margin-bottom: 6px;
+    background: var(--border); transition: background .3s;
+  }
+  .stage-step.done   .track { background: var(--green); }
+  .stage-step.active .track { background: var(--accent); }
+  .stage-step.failed .track { background: var(--red); }
+  .stage-step .label {
+    font-size: 11px; color: var(--muted); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+    transition: color .3s;
+  }
+  .stage-step.done   .label { color: var(--text); }
+  .stage-step.active .label { color: var(--accent); }
+  .stage-step.failed .label { color: var(--red); }
+  .stage-detail { font-size: 12px; color: var(--muted); min-height: 18px; }
 </style>
 </head>
 <body>
@@ -152,6 +182,7 @@
       <button class="active" onclick="switchTab('findings')">Findings</button>
       <button onclick="switchTab('observations')">eBPF Activity</button>
       <button onclick="switchTab('inventory')">Inventory</button>
+      <button onclick="switchTab('scan')">Scan</button>
     </nav>
     <button id="refresh-btn" onclick="reload()">↺ Refresh</button>
   </header>
@@ -172,6 +203,7 @@
 // ─────────────────────────────────────────────
 let currentTab = 'findings';
 let cache = {};
+let scanEvtSource = null; // active EventSource, if any
 
 // ─────────────────────────────────────────────
 // Routing
@@ -179,10 +211,12 @@ let cache = {};
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('nav button').forEach((b, i) => {
-    const tabs = ['findings', 'observations', 'inventory'];
+    const tabs = ['findings', 'observations', 'inventory', 'scan'];
     b.classList.toggle('active', tabs[i] === tab);
   });
-  cache = {}; // bust cache on tab switch
+  cache = {};
+  // Leave the SSE connection open when switching away from Scan —
+  // it will close itself on Complete/Failed.
   reload();
 }
 
@@ -192,6 +226,7 @@ function reload() {
   if (currentTab === 'findings')     renderFindings();
   if (currentTab === 'observations') renderObservations();
   if (currentTab === 'inventory')    renderInventory();
+  if (currentTab === 'scan')         renderScan();
 }
 
 // ─────────────────────────────────────────────
@@ -239,14 +274,14 @@ function scoreBar(score) {
 function rankBadge(r) {
   if (r == null) return '<span class="badge badge-none">unranked</span>';
   const v = parseFloat(r).toFixed(1);
-  if (r >= 8)  return `<span class="badge badge-critical">${v}</span>`;
-  if (r >= 5)  return `<span class="badge badge-high">${v}</span>`;
-  if (r >= 2)  return `<span class="badge badge-medium">${v}</span>`;
+  if (r >= 8) return `<span class="badge badge-critical">${v}</span>`;
+  if (r >= 5) return `<span class="badge badge-high">${v}</span>`;
+  if (r >= 2) return `<span class="badge badge-medium">${v}</span>`;
   return `<span class="badge badge-low">${v}</span>`;
 }
 
 function symbolBadge(called, present) {
-  if (called) return '<span class="badge badge-called">called</span>';
+  if (called)  return '<span class="badge badge-called">called</span>';
   if (present) return '<span class="badge badge-medium">present</span>';
   return '<span class="badge badge-none">none</span>';
 }
@@ -254,6 +289,15 @@ function symbolBadge(called, present) {
 function fmtDate(ts) {
   if (!ts) return '—';
   return new Date(ts).toLocaleString();
+}
+
+function fmtDuration(startedAt, finishedAt) {
+  if (!finishedAt) return '—';
+  const ms = new Date(finishedAt) - new Date(startedAt);
+  const s  = Math.floor(ms / 1000);
+  if (s < 60)   return `${s}s`;
+  const m = Math.floor(s / 60);
+  return `${m}m ${s % 60}s`;
 }
 
 function filterRows(rows, query, fields) {
@@ -291,13 +335,8 @@ async function renderFindings() {
           <table id="findings-table">
             <thead>
               <tr>
-                <th>Rank</th>
-                <th>CVE</th>
-                <th>Package</th>
-                <th>CVSS</th>
-                <th>KEV</th>
-                <th>Symbol</th>
-                <th>Version</th>
+                <th>Rank</th><th>CVE</th><th>Package</th>
+                <th>CVSS</th><th>KEV</th><th>Symbol</th><th>Version</th>
               </tr>
             </thead>
             <tbody id="findings-body"></tbody>
@@ -310,7 +349,7 @@ async function renderFindings() {
 }
 
 function applyFindingsFilter() {
-  const q = (document.getElementById('findings-search')?.value || '').toLowerCase();
+  const q    = (document.getElementById('findings-search')?.value || '').toLowerCase();
   const rows = filterRows(cache.findings || [], q, ['cve_id', 'cpe_name', 'cpe_product']);
   const tbody = document.getElementById('findings-body');
   if (!tbody) return;
@@ -335,17 +374,17 @@ async function openDetail(cveId) {
   document.getElementById('detail-panel').classList.add('open');
   document.getElementById('detail-body').innerHTML = '<div class="state-msg">Loading…</div>';
   try {
-    const d = await fetchJSON(`/api/cve/${encodeURIComponent(cveId)}`);
-    const cv = d.cve;
+    const d    = await fetchJSON(`/api/cve/${encodeURIComponent(cveId)}`);
+    const cv   = d.cve;
     const syms = d.symbols;
 
     const symHtml = syms.length
       ? syms.map(s => `
-        <div class="sym-row">
-          <span class="sym-name">${s.name}</span>
-          <span class="badge badge-${s.confidence === 'high' ? 'green' : s.confidence === 'medium' ? 'medium' : 'none'}">${s.confidence}</span>
-          <span class="sym-calls">${s.total_calls != null ? s.total_calls + ' calls' : ''}</span>
-        </div>`).join('')
+          <div class="sym-row">
+            <span class="sym-name">${s.name}</span>
+            <span class="badge badge-${s.confidence === 'high' ? 'green' : s.confidence === 'medium' ? 'medium' : 'none'}">${s.confidence}</span>
+            <span class="sym-calls">${s.total_calls != null ? s.total_calls + ' calls' : ''}</span>
+          </div>`).join('')
       : '<div style="color:var(--muted);font-size:13px">No symbols extracted.</div>';
 
     document.getElementById('detail-body').innerHTML = `
@@ -357,11 +396,15 @@ async function openDetail(cveId) {
         <div class="meta-item"><label>KEV Listed</label><span>${cv.kev_listed ? '<span class="badge badge-kev">YES</span>' : '—'}</span></div>
         <div class="meta-item"><label>Published</label><span style="font-size:12px">${fmtDate(cv.published_at)}</span></div>
       </div>
-      ${cv.cvss_vector ? `<div style="margin-bottom:16px"><label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">Vector</label><div style="font-family:monospace;font-size:12px;color:var(--muted);margin-top:4px;word-break:break-all">${cv.cvss_vector}</div></div>` : ''}
+      ${cv.cvss_vector ? `<div style="margin-bottom:16px">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">Vector</label>
+        <div style="font-family:monospace;font-size:12px;color:var(--muted);margin-top:4px;word-break:break-all">${cv.cvss_vector}</div>
+      </div>` : ''}
       <h3>Symbols (${syms.length})</h3>
       ${symHtml}
       <div style="margin-top:16px">
-        <a href="https://nvd.nist.gov/vuln/detail/${cv.cve_id}" target="_blank" style="color:var(--accent);font-size:12px">View on NVD ↗</a>
+        <a href="https://nvd.nist.gov/vuln/detail/${cv.cve_id}" target="_blank"
+           style="color:var(--accent);font-size:12px">View on NVD ↗</a>
       </div>
     `;
   } catch(e) {
@@ -379,7 +422,7 @@ function closeDetail() {
 // ─────────────────────────────────────────────
 async function renderObservations() {
   try {
-    const data = await fetchJSON('/api/observations');
+    const data = await fetchJSON('/api/observation');
 
     if (!data.length) {
       document.getElementById('main-content').innerHTML =
@@ -402,12 +445,8 @@ async function renderObservations() {
           <table id="obs-table">
             <thead>
               <tr>
-                <th>Symbol</th>
-                <th>CVE</th>
-                <th>Total Calls</th>
-                <th>Distinct PIDs</th>
-                <th>Processes</th>
-                <th>Last Seen</th>
+                <th>Symbol</th><th>CVE</th><th>Total Calls</th>
+                <th>Distinct PIDs</th><th>Processes</th><th>Last Seen</th>
               </tr>
             </thead>
             <tbody id="obs-body"></tbody>
@@ -421,7 +460,7 @@ async function renderObservations() {
 }
 
 function applyObsFilter() {
-  const q = (document.getElementById('obs-search')?.value || '').toLowerCase();
+  const q    = (document.getElementById('obs-search')?.value || '').toLowerCase();
   const rows = filterRows(cache.observations || [], q, ['symbol_name', 'cve_id', 'recent_processes']);
   const tbody = document.getElementById('obs-body');
   if (!tbody) return;
@@ -459,14 +498,8 @@ async function renderInventory() {
           <table id="inv-table">
             <thead>
               <tr>
-                <th>Package</th>
-                <th>Vendor</th>
-                <th>Version</th>
-                <th>Source</th>
-                <th>CPE</th>
-                <th>Confidence</th>
-                <th>CVEs</th>
-                <th>Last Seen</th>
+                <th>Package</th><th>Vendor</th><th>Version</th><th>Source</th>
+                <th>CPE</th><th>Confidence</th><th>CVEs</th><th>Last Seen</th>
               </tr>
             </thead>
             <tbody id="inv-body"></tbody>
@@ -480,16 +513,17 @@ async function renderInventory() {
 }
 
 function applyInvFilter() {
-  const q = (document.getElementById('inv-search')?.value || '').toLowerCase();
+  const q    = (document.getElementById('inv-search')?.value || '').toLowerCase();
   const rows = filterRows(cache.inventory || [], q, ['name', 'product', 'vendor', 'cpe']);
   const tbody = document.getElementById('inv-body');
   if (!tbody) return;
   tbody.innerHTML = rows.map(r => {
-    const conf = r.cpe_confidence;
+    const conf      = r.cpe_confidence;
     const confClass = conf === 'high' ? 'green' : conf === 'medium' ? 'medium' : 'none';
     return `
     <tr>
-      <td><span style="font-weight:600">${r.product}</span><br><span style="color:var(--muted);font-size:11px">${r.name}</span></td>
+      <td><span style="font-weight:600">${r.product}</span><br>
+          <span style="color:var(--muted);font-size:11px">${r.name}</span></td>
       <td style="color:var(--muted)">${r.vendor || '—'}</td>
       <td style="font-family:monospace;font-size:12px">${r.version || '—'}</td>
       <td><span class="badge badge-none">${r.source}</span></td>
@@ -500,6 +534,157 @@ function applyInvFilter() {
     </tr>`;
   }).join('');
   if (!rows.length) tbody.innerHTML = '<tr><td colspan="8" class="state-msg">No results</td></tr>';
+}
+
+// ─────────────────────────────────────────────
+// Scan tab
+// ─────────────────────────────────────────────
+const SCAN_STAGES = [
+  { key: 'inventory',         label: '1 · Inventory' },
+  { key: 'cpe_resolution',    label: '2 · CPE resolution' },
+  { key: 'cve_lookup',        label: '3 · CVE lookup' },
+  { key: 'symbol_extraction', label: '4 · Symbol extraction' },
+  { key: 'persisting',        label: '5 · Persisting' },
+];
+
+async function renderScan() {
+  try {
+    const scans = await fetchJSON('/api/scan');
+
+    document.getElementById('main-content').innerHTML = `
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+          <h2 style="margin:0;font-size:15px;font-weight:700">Run a scan</h2>
+          <button id="scan-btn" class="scan-btn" onclick="startScan()">▶ Run Scan</button>
+        </div>
+        <div id="stage-tracker" style="display:none">
+          <div class="stage-bar" id="stage-bar">
+            ${SCAN_STAGES.map(s => `
+              <div class="stage-step" id="step-${s.key}">
+                <div class="track"></div>
+                <div class="label">${s.label}</div>
+              </div>`).join('')}
+          </div>
+          <div class="stage-detail" id="stage-detail"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2 style="margin:0 0 16px;font-size:15px;font-weight:700">Scan history</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Status</th><th>Started</th><th>Finished</th><th>Duration</th></tr>
+            </thead>
+            <tbody id="scan-history">
+              ${scans.length
+                ? scans.map(scanRow).join('')
+                : '<tr><td colspan="5" class="state-msg">No scans yet</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  } catch(e) { err(e.message); }
+}
+
+function scanRow(s) {
+  const statusClass = s.status === 'complete' ? 'low' : s.status === 'failed' ? 'critical' : 'medium';
+  return `<tr>
+    <td style="font-family:monospace;font-size:11px;color:var(--muted)">${s.id.slice(0,8)}…</td>
+    <td><span class="badge badge-${statusClass}">${s.status}</span></td>
+    <td style="color:var(--muted);font-size:12px">${fmtDate(s.started_at)}</td>
+    <td style="color:var(--muted);font-size:12px">${fmtDate(s.finished_at)}</td>
+    <td style="font-size:12px">${fmtDuration(s.started_at, s.finished_at)}</td>
+  </tr>`;
+}
+
+async function startScan() {
+  const btn = document.getElementById('scan-btn');
+  btn.disabled = true;
+  btn.textContent = 'Starting…';
+
+  try {
+    const res = await fetch('/api/scan', { method: 'POST' });
+    if (!res.ok) {
+      const msg = res.status === 409 ? 'A scan is already running' : await res.text();
+      throw new Error(msg);
+    }
+
+    const { scan_id } = await res.json();
+    btn.textContent = 'Running…';
+    openScanEvents(scan_id);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '▶ Run Scan';
+    alert(`Failed to start scan: ${e.message}`);
+  }
+}
+
+function openScanEvents(scanId) {
+  // Close any existing connection
+  if (scanEvtSource) { scanEvtSource.close(); scanEvtSource = null; }
+
+  const tracker = document.getElementById('stage-tracker');
+  if (tracker) tracker.style.display = 'block';
+
+  scanEvtSource = new EventSource('/api/scan/events');
+
+  scanEvtSource.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+
+    if (msg.type === 'stage') {
+      setStage(msg.stage, msg.detail);
+    }
+
+    if (msg.type === 'complete') {
+      finaliseStages('done');
+      closeScanEvents();
+      // Refresh history table to show the completed scan
+      fetchJSON('/api/scan').then(scans => {
+        const tbody = document.getElementById('scan-history');
+        if (tbody) tbody.innerHTML = scans.map(scanRow).join('');
+      });
+    }
+
+    if (msg.type === 'failed') {
+      finaliseStages('failed');
+      closeScanEvents();
+      document.getElementById('stage-detail').textContent = `Error: ${msg.error}`;
+    }
+  };
+
+  scanEvtSource.onerror = () => {
+    // SSE connection dropped — pipeline may have ended, just clean up
+    closeScanEvents();
+  };
+}
+
+function closeScanEvents() {
+  if (scanEvtSource) { scanEvtSource.close(); scanEvtSource = null; }
+  const btn = document.getElementById('scan-btn');
+  if (btn) { btn.disabled = false; btn.textContent = '▶ Run Scan'; }
+}
+
+function setStage(stageKey, detail) {
+  const idx = SCAN_STAGES.findIndex(s => s.key === stageKey);
+
+  SCAN_STAGES.forEach((s, i) => {
+    const el = document.getElementById(`step-${s.key}`);
+    if (!el) return;
+    el.className = 'stage-step ' + (i < idx ? 'done' : i === idx ? 'active' : '');
+  });
+
+  const detailEl = document.getElementById('stage-detail');
+  if (detailEl) detailEl.textContent = detail;
+}
+
+function finaliseStages(outcome) {
+  // outcome: 'done' | 'failed'
+  SCAN_STAGES.forEach(s => {
+    const el = document.getElementById(`step-${s.key}`);
+    if (!el) return;
+    el.className = `stage-step ${outcome === 'failed' && el.classList.contains('active') ? 'failed' : 'done'}`;
+  });
 }
 
 // ─────────────────────────────────────────────

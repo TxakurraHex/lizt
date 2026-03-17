@@ -1,8 +1,8 @@
+use super::state::AppState;
 use axum::{Json, extract::State, http::StatusCode};
 use chrono::{DateTime, Utc};
 use common::symbol_observation::SymbolObservation;
 use serde::Serialize;
-use sqlx::PgPool;
 
 #[derive(Serialize)]
 pub struct SymbolObservationResponse {
@@ -30,9 +30,9 @@ impl From<SymbolObservation> for SymbolObservationResponse {
 }
 
 pub async fn list(
-    State(pool): State<PgPool>,
+    State(state): State<AppState>,
 ) -> Result<Json<Vec<SymbolObservationResponse>>, (StatusCode, String)> {
-    let observations = db::symbol_tables::get_symbol_observations(&pool)
+    let observations = db::symbol_tables::get_symbol_observations(&state.pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 

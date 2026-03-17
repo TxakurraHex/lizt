@@ -1,9 +1,10 @@
-use crate::symbol_extractor::Scraper;
 use async_trait::async_trait;
 use common::cve::Cve;
 use common::symbol::{SourceLang, Symbol, SymbolConfidence};
 use regex::Regex;
 use std::sync::OnceLock;
+
+use crate::extractor::Scraper;
 
 fn function_name_pattern_regexes() -> &'static (Regex, Regex, Regex, Regex, Regex) {
     static REGEXES: OnceLock<(Regex, Regex, Regex, Regex, Regex)> = OnceLock::new();

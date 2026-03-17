@@ -1,35 +1,90 @@
 [workspace]
 members = [
-    "scanner/inventory",
-    "scanner/rest",
-    "scanner/symbols",
-    "core/common",
+    # Presentation
     "scanner/cli",
-    "core/db", "scanner/web",
+    "scanner/web",
+    # Orchestration
+    "pipeline",
+    # I/O
+    "io/inventory",
+    "io/nvd",
+    "io/symbols",
+    # Core
+    "core/common",
+    "core/db",
+    # Tooling
+    # "xtask",
 ]
 exclude = ["monitor"]
 resolver = "2"
 
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
 [workspace.dependencies]
-reqwest = { version = "0.13.2", features = ["json", "query"] }
-async-trait = "0.1"
+# Internal crates
+common = { path = "core/common" }
+db = { path = "core/db" }
+pipeline = { path = "pipeline" }
+io-inventory = { path = "io/inventory" }
+io-nvd = { path = "io/nvd" }
+io-symbols = { path = "io/symbols" }
+
+# Async
+tokio = { version = "1", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
 futures = "0.3"
-regex = "1"
+async-trait = "0.1"
+
+# Web
+axum = { version = "0.8", features = ["macros"] }
+tower-http = { version = "0.6", features = ["cors"] }
+
+# HTTP client
+reqwest = { version = "0.13", features = ["json", "query"] }
+
+# Database
+sqlx = { version = "0.8", features = [
+    "postgres",
+    "runtime-tokio",
+    "time",
+    "migrate",
+    "uuid",
+    "chrono",
+    "rust_decimal",
+] }
+
+# Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-log = "0.4"
-env_logger = "0.11"
-time = { version = "0.3", features = ["serde", "macros"] }
-sqlx = { version = "0.8", features = ["postgres", "runtime-tokio", "time", "migrate", "uuid", "chrono", "rust_decimal"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-strum = { version = "0.28.0", features = ["derive"] }
-phf = { version = "0.13", features = ["macros"] }
-radix_trie = "0.3"
-log4rs = { version = "1", features = ["rolling_file_appender", "compound_policy", "size_trigger", "time_trigger", "fixed_window_roller", "gzip", ] }
-clap = { version = "4", features = ["derive"] }
-tokio = { version = "1", features = ["full"] }
+
+# Types
 chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1.21", features = ["serde"] }
-rust_decimal = { version = "1.40", features = ["db-postgres", "serde"] }
+uuid = { version = "1", features = ["serde"] }
+rust_decimal = { version = "1", features = ["db-postgres", "serde"] }
+
+# Text / data structures
+regex = "1"
+radix_trie = "0.3"
+phf = { version = "0.13", features = ["macros"] }
+strum = { version = "0.28", features = ["derive"] }
+
+# Error handling
+thiserror = "2"
+
+# Logging
+log = "0.4"
+log4rs = { version = "1", features = [
+    "rolling_file_appender",
+    "compound_policy",
+    "size_trigger",
+    "time_trigger",
+    "fixed_window_roller",
+    "gzip",
+] }
+tracing = "0.1"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
 inquire = "0.7"

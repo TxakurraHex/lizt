@@ -1,14 +1,15 @@
+use io_nvd::{
+    client::LiztClient,
+    response::{cpe::NvdCpeItem, cve::NvdCveItem},
+};
 use log::{error, info};
-use rest::nvd::cpe_response::NvdCpeItem;
-use rest::nvd::cve_response::NvdCveItem;
-use rest::rest_client::LiztRestClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     let api_key = std::env::var("NVD_API_KEY").ok();
     let github_token = std::env::var("GITHUB_TOKEN").ok();
-    let rest_client = LiztRestClient::new(api_key, github_token);
+    let rest_client = LiztClient::new(api_key, github_token);
     let match_string = String::from("cpe:2.3:a:openssl:openssl:3.0.19");
     if let Some(cpe_matches) = cpe_match(&rest_client, &match_string).await {
         for product in cpe_matches {
@@ -29,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn cpe_match(client: &LiztRestClient, cpe_match: &str) -> Option<Vec<NvdCpeItem>> {
+async fn cpe_match(client: &LiztClient, cpe_match: &str) -> Option<Vec<NvdCpeItem>> {
     Some(
         client
             .request_cpe_data(cpe_match)
@@ -40,7 +41,7 @@ async fn cpe_match(client: &LiztRestClient, cpe_match: &str) -> Option<Vec<NvdCp
     )
 }
 
-async fn cve_results(client: &LiztRestClient, cpe_name: &str) -> Option<Vec<NvdCveItem>> {
+async fn cve_results(client: &LiztClient, cpe_name: &str) -> Option<Vec<NvdCveItem>> {
     Some(
         client
             .request_cve_data(cpe_name)

@@ -1,11 +1,11 @@
-use crate::scrapers::description_scraper::scrape_description;
-use crate::symbol_extractor::Scraper;
+use crate::extractor::Scraper;
+use crate::scrapers::description::scrape_description;
 use async_trait::async_trait;
 use common::cve::{Cve, CveRef};
 use common::symbol::{SourceLang, Symbol, SymbolConfidence};
+use io_nvd::client::LiztClient;
+use io_nvd::response::github::GitHubIssue;
 use regex::Regex;
-use rest::nvd::github_response::GitHubIssue;
-use rest::rest_client::LiztRestClient;
 use std::sync::{Arc, OnceLock};
 
 fn diff_regexes() -> &'static (Regex, Regex, Regex, Regex, Regex, Regex) {
@@ -20,11 +20,11 @@ fn diff_regexes() -> &'static (Regex, Regex, Regex, Regex, Regex, Regex) {
     ))
 }
 pub struct GithubScraper {
-    client: Arc<LiztRestClient>,
+    client: Arc<LiztClient>,
 }
 
 impl GithubScraper {
-    pub fn new(client: Arc<LiztRestClient>) -> Self {
+    pub fn new(client: Arc<LiztClient>) -> Self {
         Self { client }
     }
 }

@@ -434,14 +434,11 @@ dependencies = [
  "clap",
  "common",
  "db",
- "futures",
  "inquire",
- "inventory",
  "log",
  "log4rs",
- "rest",
+ "pipeline",
  "sqlx",
- "symbols",
  "tokio",
 ]
 
@@ -1376,15 +1373,45 @@ dependencies = [
 ]
 
 [[package]]
-name = "inventory"
+name = "io-inventory"
 version = "0.1.0"
 dependencies = [
  "common",
+ "log",
  "radix_trie",
  "regex",
  "serde",
  "serde_json",
  "tracing",
+]
+
+[[package]]
+name = "io-nvd"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "common",
+ "env_logger",
+ "futures",
+ "log",
+ "reqwest",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "io-symbols"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "common",
+ "futures",
+ "io-nvd",
+ "log",
+ "regex",
+ "tokio",
 ]
 
 [[package]]
@@ -1810,6 +1837,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
+name = "pipeline"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "common",
+ "db",
+ "futures",
+ "io-inventory",
+ "io-nvd",
+ "io-symbols",
+ "log",
+ "sqlx",
+ "thiserror 2.0.18",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "pkcs1"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1844,9 +1889,9 @@ checksum = "c33a9471896f1c69cecef8d20cbe2f7accd12527ce60845ff44c153bb2a21b49"
 
 [[package]]
 name = "portable-atomic-util"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a9db96d7fa8782dd8c15ce32ffe8680bbd1e978a43bf51a34d39483540495f5"
+checksum = "091397be61a01d4be58e7841595bd4bfedb15f1cd54977d79b8271e94ed799a3"
 dependencies = [
  "portable-atomic",
 ]
@@ -2183,22 +2228,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
-]
-
-[[package]]
-name = "rest"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "common",
- "env_logger",
- "futures",
- "log",
- "reqwest",
- "rust_decimal",
- "serde",
- "serde_json",
- "tokio",
 ]
 
 [[package]]
@@ -2910,19 +2939,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
-name = "symbols"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "common",
- "futures",
- "log",
- "regex",
- "rest",
- "tokio",
-]
-
-[[package]]
 name = "syn"
 version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3153,6 +3169,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -3517,13 +3534,17 @@ dependencies = [
  "chrono",
  "common",
  "db",
+ "futures",
+ "io-nvd",
  "log",
  "log4rs",
+ "pipeline",
  "rust_decimal",
  "serde",
  "serde_json",
  "sqlx",
  "tokio",
+ "tokio-stream",
  "tower-http",
  "uuid",
 ]

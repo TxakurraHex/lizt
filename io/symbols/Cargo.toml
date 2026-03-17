@@ -1,13 +1,13 @@
 [package]
-name = "db"
+name = "io-symbols"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
 common = { workspace = true }
-sqlx = { workspace = true }
-chrono = { workspace = true }
-uuid = { workspace = true }
+io-nvd = { workspace = true }
+async-trait = { workspace = true }
 futures = { workspace = true }
+regex = { workspace = true }
 log = { workspace = true }
-rust_decimal = { workspace = true }
+tokio = { workspace = true }
