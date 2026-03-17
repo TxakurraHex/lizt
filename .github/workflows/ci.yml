@@ -1,0 +1,203 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1: Scanner workspace (stable, cross-platform)
+  # ─────────────────────────────────────────────
+  scanner:
+    name: Scanner — build, test, lint
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: lizt
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          POSTGRES_DB: lizt
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://lizt:${{ secrets.DB_PASSWORD }}@localhost/lizt
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt, llvm-tools-preview
+
+      - name: Cache cargo registry + build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: scanner-stable-${{ hashFiles('Cargo.lock') }}
+          restore-keys: scanner-stable-
+
+      - name: Install cargo tools
+        run: |
+          cargo install cargo-llvm-cov --locked
+          cargo install clippy-sarif sarif-fmt --locked
+
+      - name: Run sqlx migrations
+        run: |
+          cargo install sqlx-cli --no-default-features --features postgres --locked
+          sqlx migrate run --source migrations
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Build
+        run: cargo build --all-targets
+
+      - name: Clippy (SARIF for SonarCloud)
+        run: |
+          cargo clippy --all-targets --message-format=json 2>&1 \
+            | clippy-sarif \
+            | tee clippy-scanner.sarif
+        continue-on-error: true
+
+      - name: Tests with coverage
+        run: |
+          cargo llvm-cov \
+            --all-features \
+            --lcov \
+            --output-path coverage/lcov.info
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/lcov.info
+
+      - name: Upload Clippy SARIF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clippy-scanner-sarif
+          path: clippy-scanner.sarif
+
+  # ─────────────────────────────────────────────
+  # Job 2: Monitor workspace (nightly + bpf-linker)
+  # ─────────────────────────────────────────────
+  monitor:
+    name: Monitor — build + lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install nightly Rust + rust-src
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy, rustfmt, rust-src
+
+      - name: Install LLVM (required by bpf-linker)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y llvm-14 clang-14 libelf-dev
+
+      - name: Install bpf-linker
+        run: cargo +nightly install bpf-linker --locked
+
+      - name: Cache cargo registry + build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            monitor/target/
+          key: monitor-nightly-${{ hashFiles('monitor/Cargo.lock') }}
+          restore-keys: monitor-nightly-
+
+      - name: Check formatting
+        working-directory: monitor
+        run: cargo fmt --all -- --check
+
+      - name: Build eBPF programs
+        working-directory: monitor
+        run: |
+          cargo +nightly build \
+            -p ebpf_programs \
+            --target bpfel-unknown-none \
+            -Z build-std=core
+
+      - name: Build userspace monitor
+        working-directory: monitor
+        run: cargo build -p ebpf
+
+      - name: Clippy — monitor (SARIF)
+        working-directory: monitor
+        run: |
+          cargo clippy -p ebpf --message-format=json 2>&1 \
+            | clippy-sarif \
+            | tee ../clippy-monitor.sarif
+        continue-on-error: true
+
+      - name: Upload Clippy SARIF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clippy-monitor-sarif
+          path: clippy-monitor.sarif
+
+  # ─────────────────────────────────────────────
+  # Job 3: SonarCloud analysis (depends on both)
+  # ─────────────────────────────────────────────
+  sonar:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    needs: [scanner, monitor]
+    if: always() # run even if monitor lint had continue-on-error issues
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # SonarCloud needs full git history for blame/new-code
+
+      - name: Download coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+
+      - name: Download scanner Clippy SARIF
+        uses: actions/download-artifact@v4
+        with:
+          name: clippy-scanner-sarif
+
+      - name: Download monitor Clippy SARIF
+        uses: actions/download-artifact@v4
+        with:
+          name: clippy-monitor-sarif
+
+      - name: Merge SARIF files
+        run: |
+          # SonarCloud accepts a comma-separated list of SARIF paths
+          echo "SARIF_PATHS=clippy-scanner.sarif,clippy-monitor.sarif" >> $GITHUB_ENV
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
