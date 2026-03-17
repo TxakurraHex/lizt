@@ -10,9 +10,8 @@ fn main() {
 
     // Match the host arch so BPF code can use #[cfg(bpf_target_arch = "...")]
     let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_else(|_| "x86_64".to_string());
-    let rustflags = format!(
-        "--cfg=bpf_target_arch=\"{arch}\"\x1f-Cdebuginfo=2\x1f-Clink-arg=--btf"
-    );
+    let rustflags =
+        format!("--cfg=bpf_target_arch=\"{arch}\"\x1f-Cdebuginfo=2\x1f-Clink-arg=--btf");
 
     let status = Command::new("rustup")
         .args([
@@ -43,5 +42,6 @@ fn main() {
     let dst = out_dir.join("ebpf_programs");
     std::fs::copy(&src, &dst).expect("failed to copy BPF binary to OUT_DIR");
 
-    println!("cargo:rerun-if-changed=../ebpf_programs");
+    println!("cargo:rerun-if-changed=../ebpf_programs/src");
+    println!("cargo:rerun-if-changed=../ebpf_programs/Cargo.toml");
 }
