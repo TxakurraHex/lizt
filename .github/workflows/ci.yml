@@ -75,6 +75,9 @@ jobs:
             | clippy-sarif \
             | tee clippy-scanner.sarif
         continue-on-error: true
+      
+      - name: Create coverage report directory
+        run: mkdir -p coverage
 
       - name: Tests with coverage
         run: |
