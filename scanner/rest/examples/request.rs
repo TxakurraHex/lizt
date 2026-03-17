@@ -1,7 +1,7 @@
+use log::{error, info};
 use rest::nvd::cpe_response::NvdCpeItem;
 use rest::nvd::cve_response::NvdCveItem;
 use rest::rest_client::LiztRestClient;
-use log::{error, info};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

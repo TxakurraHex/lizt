@@ -35,7 +35,10 @@ impl Scraper for OsvScraper {
         }
 
         let diffs = futures::future::join_all(osv.patch_urls.iter().map(|url| async {
-            self.client.request_patch(url).await.map(|diff| (diff, url.clone()))
+            self.client
+                .request_patch(url)
+                .await
+                .map(|diff| (diff, url.clone()))
         }))
         .await;
 
