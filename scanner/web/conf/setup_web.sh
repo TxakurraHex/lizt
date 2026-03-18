@@ -4,7 +4,7 @@
 # Stop on failure
 set -euo pipefail
 
-BINARY="target/release/lizt_web"
+BINARY="target/debug/lizt_web"
 BIN_DIR="/usr/bin"
 CONF_DIR="/etc/lizt"
 LOG_DIR="/var/log/lizt"
@@ -82,17 +82,17 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t
 echo "nginx config installed and validated"
 
+# log4rs
+install -Dm644 scanner/web/conf/web_log4rs.yaml "$CONF_DIR/"
+
+# Migrations
+cp -r migrations /etc/lizt/migrations
+
 # systemd unit file
 install -Dm644 scanner/web/conf/lizt_web.service "$SERVICE_FILE"
 systemctl daemon-reload
 systemctl enable --now lizt_web
 systemctl reload nginx
-
-# log4rs
-install -Dm644 scanner/web/conf/lizt_web_log4rs.yaml "$CONF_DIR/"
-
-# Migrations
-cp -r migrations /etc/lizt/migrations
 
 echo ""
 echo "Done. lizt_web is running."

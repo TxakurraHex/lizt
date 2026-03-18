@@ -45,8 +45,8 @@ impl LiztClient {
     }
 
     pub async fn request_cpe_data(&self, cpe_match: &str) -> Option<Vec<NvdProduct>> {
+        self.nvd_limiter.acquire().await;
         for attempt in 0..MAX_RETRIES {
-            self.nvd_limiter.acquire().await;
             let mut request = self
                 .client
                 .get(NVD_CPE_ENDPOINT)
@@ -63,7 +63,6 @@ impl LiztClient {
                     if resp.status() == reqwest::StatusCode::FORBIDDEN
                         || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
                 {
-                    self.nvd_limiter.release();
                     if attempt + 1 == MAX_RETRIES {
                         break;
                     }
@@ -90,7 +89,6 @@ impl LiztClient {
                     return None;
                 }
                 Err(e) => {
-                    self.nvd_limiter.release();
                     error!("Error fetching CPE {}: {}", cpe_match, e);
                     return None;
                 }
@@ -104,8 +102,8 @@ impl LiztClient {
     }
 
     pub async fn request_cve_data(&self, cpe_name: &str) -> Option<Vec<NvdVulnerability>> {
+        self.nvd_limiter.acquire().await;
         for attempt in 0..MAX_RETRIES {
-            self.nvd_limiter.acquire().await;
             let mut request = self
                 .client
                 .get(NVD_CVE_ENDPOINT)
@@ -113,13 +111,13 @@ impl LiztClient {
             if let Some(nvd_key) = &self.nvd_key {
                 request = request.header("apiKey", nvd_key);
             }
+
             debug!("Sending request to CVE endpoint with CPE name {}", cpe_name);
             match request.send().await {
                 Ok(resp)
                     if resp.status() == reqwest::StatusCode::FORBIDDEN
                         || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
                 {
-                    self.nvd_limiter.release();
                     if attempt + 1 == MAX_RETRIES {
                         break;
                     }
@@ -145,7 +143,6 @@ impl LiztClient {
                     return None;
                 }
                 Err(e) => {
-                    self.nvd_limiter.release();
                     error!("Error fetching CVE from cpeName {}: {}", cpe_name, e);
                     return None;
                 }
@@ -159,8 +156,8 @@ impl LiztClient {
     }
 
     pub async fn request_cve_by_id(&self, cve_id: &str) -> Option<Vec<NvdVulnerability>> {
+        self.nvd_limiter.acquire().await;
         for attempt in 0..MAX_RETRIES {
-            self.nvd_limiter.acquire().await;
             let mut request = self
                 .client
                 .get(NVD_CVE_ENDPOINT)
@@ -174,7 +171,6 @@ impl LiztClient {
                     if resp.status() == reqwest::StatusCode::FORBIDDEN
                         || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
                 {
-                    self.nvd_limiter.release();
                     if attempt + 1 == MAX_RETRIES {
                         break;
                     }
@@ -200,7 +196,6 @@ impl LiztClient {
                     return None;
                 }
                 Err(e) => {
-                    self.nvd_limiter.release();
                     error!("Error fetching CVE {}: {}", cve_id, e);
                     return None;
                 }
@@ -215,9 +210,9 @@ impl LiztClient {
 
     pub async fn request_patch(&self, commit_url: &str) -> Option<String> {
         let patch_url = to_patch_url(commit_url)?;
+        self.github_limiter.acquire().await;
 
         for attempt in 0..MAX_RETRIES {
-            self.github_limiter.acquire().await;
             let mut request = self.client.get(&patch_url);
             if let Some(github_key) = &self.github_token {
                 request = request.header("Authorization", format!("Bearer {}", github_key));
@@ -228,7 +223,6 @@ impl LiztClient {
                     if resp.status() == reqwest::StatusCode::FORBIDDEN
                         || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
                 {
-                    self.github_limiter.release();
                     if attempt + 1 == MAX_RETRIES {
                         break;
                     }
@@ -244,7 +238,6 @@ impl LiztClient {
                     return None;
                 }
                 Err(e) => {
-                    self.github_limiter.release();
                     error!("Couldn't get commit diff from {}: {}", commit_url, e);
                     return None;
                 }
@@ -261,12 +254,12 @@ impl LiztClient {
         if !issue_url.contains("github.com") {
             return None;
         }
+        self.github_limiter.acquire().await;
         let api_url = issue_url
             .replace("github.com", "api.github.com/repos")
             .replace("/pull/", "/pulls/");
 
         for attempt in 0..MAX_RETRIES {
-            self.github_limiter.acquire().await;
             let mut request = self.client.get(&api_url);
             if let Some(github_key) = &self.github_token {
                 request = request.header("Authorization", format!("Bearer {}", github_key));
@@ -277,7 +270,6 @@ impl LiztClient {
                     if resp.status() == reqwest::StatusCode::FORBIDDEN
                         || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
                 {
-                    self.github_limiter.release();
                     if attempt + 1 == MAX_RETRIES {
                         break;
                     }
@@ -301,7 +293,6 @@ impl LiztClient {
                     return None;
                 }
                 Err(e) => {
-                    self.github_limiter.release();
                     error!("Couldn't get GitHub issue from {}: {}", api_url, e);
                     return None;
                 }
@@ -313,8 +304,8 @@ impl LiztClient {
     }
 
     pub async fn request_osv(&self, cve_id: &str) -> Option<OsvExtracted> {
+        self.osv_limiter.acquire().await;
         for attempt in 0..MAX_RETRIES {
-            self.osv_limiter.acquire().await;
             let request_url = format!("{}/{}", OSV_ENDPOINT, cve_id);
             let request = self.client.get(&request_url);
             debug!("Sending request to OSV endpoint for {}", cve_id);
@@ -323,7 +314,6 @@ impl LiztClient {
                     if resp.status() == reqwest::StatusCode::FORBIDDEN
                         || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
                 {
-                    self.osv_limiter.release();
                     if attempt + 1 == MAX_RETRIES {
                         break;
                     }
@@ -348,7 +338,6 @@ impl LiztClient {
                     return None;
                 }
                 Err(e) => {
-                    self.osv_limiter.release();
                     error!("Error fetching OSV data for {}: {}", cve_id, e);
                     return None;
                 }
@@ -394,5 +383,5 @@ fn github_wait_until_reset(resp: &reqwest::Response) -> Duration {
         .as_secs();
 
     let secs_to_wait = reset_unix.saturating_sub(now) + 1;
-    Duration::from_secs(secs_to_wait)
+    Duration::from_secs(secs_to_wait.min(60))
 }

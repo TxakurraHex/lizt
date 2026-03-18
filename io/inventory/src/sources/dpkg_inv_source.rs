@@ -24,7 +24,7 @@ impl Source for DpkgSource {
                         cpe: Cpe {
                             name: product.to_string(),
                             part: CpePart::Application,
-                            vendor: String::new(),
+                            vendor: String::from("*"),
                             product: product.to_lowercase().replace("-", "_"),
                             version: Some(version.to_string()),
                         },

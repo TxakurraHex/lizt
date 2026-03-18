@@ -603,6 +603,9 @@ async function startScan() {
   btn.disabled = true;
   btn.textContent = 'Starting…';
 
+  // Open SSE connection BEFORE sending POST so we don't miss events
+  openScanEvents();
+
   try {
     const res = await fetch('/api/scan', { method: 'POST' });
     if (!res.ok) {
@@ -610,17 +613,16 @@ async function startScan() {
       throw new Error(msg);
     }
 
-    const { scan_id } = await res.json();
     btn.textContent = 'Running…';
-    openScanEvents(scan_id);
   } catch(e) {
+    closeScanEvents();
     btn.disabled = false;
     btn.textContent = '▶ Run Scan';
     alert(`Failed to start scan: ${e.message}`);
   }
 }
 
-function openScanEvents(scanId) {
+function openScanEvents() {
   // Close any existing connection
   if (scanEvtSource) { scanEvtSource.close(); scanEvtSource = null; }
 

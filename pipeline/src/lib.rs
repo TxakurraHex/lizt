@@ -13,7 +13,7 @@ use io_symbols::{
     extractor::{CveSymbolExtractor, Scraper},
     scrapers::{description::DescriptionScraper, github::GithubScraper, osv::OsvScraper},
 };
-use log::{debug, error};
+use log::{debug, error, info};
 use sqlx::PgPool;
 use std::{collections::HashMap, sync::Arc};
 use thiserror::Error;
@@ -142,6 +142,7 @@ async fn execute(
 ) -> Result<(), PipelineError> {
     // Stage 1: inventory
     emit(events, ScanStage::Inventory, "Collecting system inventory…");
+    info!("Collecting system inventory…");
 
     let sources: Vec<Box<dyn Source>> = vec![
         Box::new(PipSource),
@@ -151,6 +152,9 @@ async fn execute(
     ];
     let mut inventory = Inventory::new(sources);
     inventory.collect();
+    for item in &inventory.items {
+        info!("{:?}", item);
+    }
 
     // Stage 2: CPE resolution
     emit(
@@ -158,6 +162,7 @@ async fn execute(
         ScanStage::CpeResolution,
         "Resolving CPE entries against NVD…",
     );
+    info!("Resolving CPE entries against NVD…");
 
     let resolver = CpeResolver::new(Arc::clone(&client));
     let cpe_entries = resolver.resolve_all(&inventory.items).await;
@@ -176,6 +181,10 @@ async fn execute(
             "Querying NVD for CVEs across {} CPE entries…",
             cpe_ids.len()
         ),
+    );
+    info!(
+        "Querying NVD for CVEs across {} CPE entries…",
+        cpe_ids.len()
     );
 
     let (cves, associations) = fetch_cves(&cpe_ids, &client).await;
@@ -216,6 +225,7 @@ async fn execute(
         ScanStage::SymbolExtraction,
         format!("Extracting vulnerable symbols from {} CVEs…", cves.len()),
     );
+    info!("Extracting vulnerable symbols from {} CVEs…", cves.len());
 
     let symbols = extract_symbols(cves, &client).await;
 

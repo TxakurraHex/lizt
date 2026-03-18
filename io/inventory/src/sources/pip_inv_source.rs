@@ -29,7 +29,7 @@ impl Source for PipSource {
                     cpe: Cpe {
                         name: pkg.name.clone(),
                         part: CpePart::Application,
-                        vendor: String::new(),
+                        vendor: String::from("*"),
                         product: pkg.name.to_lowercase().replace("-", "_"),
                         version: Some(pkg.version),
                     },
