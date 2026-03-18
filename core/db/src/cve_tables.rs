@@ -50,7 +50,7 @@ pub async fn get_cve_with_kev(
             cv.published_at,
             cv.first_seen,
             cv.last_seen,
-            (k.cve_id IS NOT NULL) AS "kev_listed!"
+            (k.cve_id IS NOT NULL) AS kev_listed
         FROM cves cv
         LEFT JOIN kev k ON k.cve_id = cv.cve_id
         WHERE cv.cve_id = $1
