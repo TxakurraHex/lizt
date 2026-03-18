@@ -598,28 +598,15 @@ function scanRow(s) {
   </tr>`;
 }
 
-async function startScan() {
+function startScan() {
   const btn = document.getElementById('scan-btn');
   btn.disabled = true;
-  btn.textContent = 'Starting…';
+  btn.textContent = 'Connecting…';
 
-  // Open SSE connection BEFORE sending POST so we don't miss events
+  // Open SSE first, then start the scan once the connection is live.
+  // This guarantees the server-side broadcast receiver exists before
+  // any pipeline events are emitted.
   openScanEvents();
-
-  try {
-    const res = await fetch('/api/scan', { method: 'POST' });
-    if (!res.ok) {
-      const msg = res.status === 409 ? 'A scan is already running' : await res.text();
-      throw new Error(msg);
-    }
-
-    btn.textContent = 'Running…';
-  } catch(e) {
-    closeScanEvents();
-    btn.disabled = false;
-    btn.textContent = '▶ Run Scan';
-    alert(`Failed to start scan: ${e.message}`);
-  }
 }
 
 function openScanEvents() {
@@ -630,6 +617,22 @@ function openScanEvents() {
   if (tracker) tracker.style.display = 'block';
 
   scanEvtSource = new EventSource('/api/scan/events');
+
+  scanEvtSource.onopen = async () => {
+    const btn = document.getElementById('scan-btn');
+    try {
+      btn.textContent = 'Starting…';
+      const res = await fetch('/api/scan', { method: 'POST' });
+      if (!res.ok) {
+        const msg = res.status === 409 ? 'A scan is already running' : await res.text();
+        throw new Error(msg);
+      }
+      btn.textContent = 'Running…';
+    } catch(e) {
+      closeScanEvents();
+      alert(`Failed to start scan: ${e.message}`);
+    }
+  };
 
   scanEvtSource.onmessage = (e) => {
     const msg = JSON.parse(e.data);
@@ -656,8 +659,10 @@ function openScanEvents() {
   };
 
   scanEvtSource.onerror = () => {
-    // SSE connection dropped — pipeline may have ended, just clean up
-    closeScanEvents();
+    // Only clean up if the scan isn't actively running
+    if (document.getElementById('scan-btn')?.textContent !== 'Running…') {
+      closeScanEvents();
+    }
   };
 }
 

@@ -3,14 +3,15 @@ use axum::{
     Json,
     extract::{Path, State},
     http::StatusCode,
-    response::sse::{Event, KeepAlive, Sse},
+    response::{
+        IntoResponse,
+        sse::{Event, KeepAlive, Sse},
+    },
 };
 use chrono::{DateTime, Utc};
-use futures::stream::Stream;
 use pipeline::{ScanEvent, run_scan};
 use serde::Serialize;
 use sqlx::types::Uuid;
-use std::convert::Infallible;
 use tokio::sync::broadcast;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
@@ -117,9 +118,7 @@ pub async fn get_by_id(
     Ok(Json(ScanRecord::from(scan)))
 }
 
-pub async fn events(
-    State(state): State<AppState>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+pub async fn events(State(state): State<AppState>) -> impl IntoResponse {
     let rx = state.scan_tx.subscribe();
 
     let stream = BroadcastStream::new(rx).filter_map(|msg| {
@@ -148,8 +147,14 @@ pub async fn events(
             }
             Err(_) => None,
         };
-        event.map(Ok)
+        event.map(Ok::<_, std::convert::Infallible>)
     });
 
-    Sse::new(stream).keep_alive(KeepAlive::default())
+    let sse = Sse::new(stream).keep_alive(KeepAlive::default());
+
+    // Tell nginx (and other reverse proxies) not to buffer this response
+    (
+        [("X-Accel-Buffering", "no"), ("Cache-Control", "no-cache")],
+        sse,
+    )
 }
