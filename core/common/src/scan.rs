@@ -9,6 +9,7 @@ pub struct Scan {
     pub id: Uuid,
     pub started_at: DateTime<Utc>,
     pub finished_at: Option<DateTime<Utc>>,
+    pub fixture_name: Option<String>,
     pub status: String,
 }
 

@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use common::cpe::InventorySource;
 use common::process_runner::run;
+use common::{cpe::InventorySource, symbol};
 use log::{info, warn};
 
 /// Finds the shared library path that exports `symbol_name`.
@@ -27,6 +27,9 @@ pub fn resolve_library(
                 }
                 InventorySource::PackageManager(ref pm) if pm == "pip" => {
                     get_pip_library(symbol_name, package_hint)
+                }
+                InventorySource::PackageManager(ref pm) if pm == "static" => {
+                    get_static_library(symbol_name)
                 }
                 _ => None,
             };
@@ -75,6 +78,17 @@ fn get_dpkg_library(symbol_name: &str, package_hint: Option<&str>) -> Option<Pat
         }
     }
     None
+}
+
+/// Hard-coded test paths for known-vulnerable binaries and libraries
+fn get_static_library(symbol_name: &str) -> Option<PathBuf> {
+    let path_str = match symbol_name {
+        "bash" => "/opt/vulnerable/bin/bash",
+        "openssl" => "/opt/vulnerable/lib/libcrypto.so.1.1",
+        "libexpat1" => "/opt/vulnerable/lib/libexpat.so.1",
+        _ => return None,
+    };
+    Some(PathBuf::from(path_str))
 }
 
 /// Finds a `.so` extension module under the pip package's install location.
