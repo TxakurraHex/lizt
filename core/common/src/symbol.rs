@@ -21,9 +21,9 @@ pub enum SourceLang {
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum SymbolConfidence {
-    High,
-    Medium,
     Low,
+    Medium,
+    High,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]
