@@ -289,5 +289,7 @@ async fn extract_symbols(cves: Vec<Cve>, client: &Arc<LiztClient>) -> Vec<Symbol
     ];
     let mut extractor = CveSymbolExtractor::new(scrapers);
     extractor.extract_symbols(&cves).await;
+    extractor.validate();
+    extractor.infer_languages(&cves);
     extractor.symbols
 }

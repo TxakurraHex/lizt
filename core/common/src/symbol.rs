@@ -26,6 +26,17 @@ pub enum SymbolConfidence {
     High,
 }
 
+impl SymbolConfidence {
+    /// Returns the next higher confidence level, capped at `High`.
+    pub fn boost(self) -> Self {
+        match self {
+            SymbolConfidence::Low => SymbolConfidence::Medium,
+            SymbolConfidence::Medium => SymbolConfidence::High,
+            SymbolConfidence::High => SymbolConfidence::High,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub struct Symbol {
     pub name: String,
