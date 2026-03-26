@@ -8,7 +8,7 @@ vulnerabilities are actually reachable.
 ## How It Works
 
 ```
-System inventory → CPE matching → CVE lookup → Symbol extraction → eBPF runtime monitoring
+System inventory → CPE matching → CVE lookup → Symbol extraction → Symbol validation → eBPF runtime monitoring
 ```
 
 1. **Inventory** — collects installed packages and OS info from dpkg, pip, Ubuntu OS release
@@ -19,23 +19,30 @@ System inventory → CPE matching → CVE lookup → Symbol extraction → eBPF 
    vulnerabilities
 4. **Symbol extraction** — parses CVE descriptions, GitHub commit diffs, GitHub issue/PR
    bodies, and OSV database patch commits to identify vulnerable function symbols
-5. **Ranking** — scores findings using CVSS score, KEV listing status, and runtime call
+5. **Symbol validation** — resolves extracted symbols against the live system: checks
+   `/proc/kallsyms` for kernel symbols (kprobe candidates) and scans installed library files
+   via dpkg, pip, and static paths for userspace symbols (uprobe candidates). Only symbols
+   confirmed present on the system are marked `validated=TRUE` and persisted with their
+   `binary_path` and `probe_type`.
+6. **Ranking** — scores findings using CVSS score, KEV listing status, and runtime call
    confirmation
-6. **eBPF runtime monitoring** — attaches kernel and userspace probes to vulnerable symbols
-   identified in step 4, recording which processes actually call them at runtime
+7. **eBPF runtime monitoring** — attaches kernel and userspace probes to validated symbols,
+   recording which processes actually call them at runtime
 
 ## Repository Structure
 
 ```
 lizt/
   Cargo.toml              # Scanner workspace
-  scanner/                # Scanner-only crates
+  scanner/
     cli/                  # CLI binary (scan, inventory, symbols, rank, reset, configure)
+  io/
     inventory/            # System inventory collection
-    rest/                 # NVD, GitHub, and OSV HTTP client
+    nvd/                  # NVD, GitHub, and OSV HTTP client
     symbols/              # Vulnerable symbol extraction
+  pipeline/               # Scan pipeline orchestration (inventory → CPE → CVE → symbols → validate → persist)
   core/                   # Shared crates (used by both scanner and monitor)
-    common/               # Domain models (Symbol, Cve, CpeEntry, FindingRecord, etc.)
+    common/               # Domain models (Symbol, Cve, CpeEntry, FindingRecord, ResolvedSymbol, etc.)
     db/                   # PostgreSQL database layer
   monitor/                # Monitor workspace (Linux only)
     Cargo.toml
@@ -181,11 +188,15 @@ The monitor is split into two crates:
 
 ### Probe loading
 
-For each vulnerable symbol in the database, the monitor:
+The monitor only loads symbols that have been validated by the scanner pipeline
+(`validated = TRUE` in the database). Each such symbol already carries a resolved
+`probe_type` (`kprobe` or `uprobe`) and, for uprobe symbols, the `binary_path` of the
+library that exports it — both set during the scan's symbol validation stage.
 
-1. Determines the probe type by checking `/proc/kallsyms` — if the symbol name appears there
-   it is a kernel symbol and gets a **kprobe**; otherwise it gets a **uprobe** targeting the
-   relevant userspace binary.
+For each validated symbol, the monitor:
+
+1. Reads `probe_type` and `binary_path` directly from the database row — no runtime
+   `/proc/kallsyms` lookup is needed.
 2. Loads a fresh instance of the BPF program object, stamping the symbol's database ID
    (`cve_symbol_id`) into a global variable (`CVE_SYMBOL_ID`) before the program is loaded
    into the kernel. This is necessary because a single BPF program attached to multiple
@@ -264,8 +275,8 @@ Get a free NVD API key at https://nvd.nist.gov/developers/request-an-api-key.
 - GitHub scraping only works on public repositories
 - Symbol pattern matching targets C/C++, Python, and Java; other languages may produce false
   positives or misses
-- Uprobe attachment requires knowing the binary path; symbols not found in `/proc/kallsyms`
-  currently fall back to a default path (`/usr/bin/unknown`)
+- Symbols not confirmed on the local system during the validation stage are skipped — the
+  monitor only probes symbols with `validated = TRUE` in the database
 - The monitor requires Linux kernel 5.8+ for BPF ring buffer support
 
 ## License
