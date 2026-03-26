@@ -1,23 +1,22 @@
 use crate::rows::symbol_observation_rows::SymbolObservationRow;
 use crate::rows::symbol_rows::{CveSymbolWithActivityRow, CveSymbolWithCpeRow, CveSymbolsRow};
 use chrono::{DateTime, Utc};
-use common::{
-    symbol::{SourceLang, Symbol, SymbolConfidence},
-    symbol_observation::SymbolObservation,
-};
+use common::{symbol::Symbol, symbol_observation::SymbolObservation};
 use sqlx::PgPool;
-use std::str::FromStr;
 
 pub async fn insert_symbol(pool: &PgPool, symbol: &Symbol) -> Result<i64, sqlx::Error> {
     sqlx::query_scalar(
         r#"
-        INSERT INTO cve_symbols (cve_id, name, source, confidence, source_lang, context)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO cve_symbols (cve_id, name, source, confidence, source_lang, context, binary_path, probe_type, validated)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT (cve_id, name) DO UPDATE SET
             source = EXCLUDED.source,
             confidence = EXCLUDED.confidence,
             source_lang = EXCLUDED.source_lang,
-            context = EXCLUDED.context
+            context = EXCLUDED.context,
+            binary_path = EXCLUDED.binary_path,
+            probe_type = EXCLUDED.probe_type,
+            validated = EXCLUDED.validated
         RETURNING id
         "#,
     )
@@ -27,6 +26,9 @@ pub async fn insert_symbol(pool: &PgPool, symbol: &Symbol) -> Result<i64, sqlx::
     .bind(symbol.confidence.to_string())
     .bind(symbol.source_lang.to_string())
     .bind(&symbol.context)
+    .bind(&symbol.binary_path)
+    .bind(&symbol.probe_type)
+    .bind(symbol.validated)
     .fetch_one(pool)
     .await
 }
@@ -38,9 +40,7 @@ pub async fn get_symbols(pool: &PgPool) -> Result<Vec<Symbol>, sqlx::Error> {
         .map(|rows| rows.into_iter().map(Symbol::from).collect())
 }
 
-pub async fn get_symbols_with_ids(
-    pool: &PgPool,
-) -> Result<Vec<(i64, Symbol, Option<String>, Option<String>)>, sqlx::Error> {
+pub async fn get_symbols_with_ids(pool: &PgPool) -> Result<Vec<(i64, Symbol)>, sqlx::Error> {
     sqlx::query_as::<_, CveSymbolWithCpeRow>(
         r#"
             SELECT DISTINCT ON (cs.id)
@@ -51,11 +51,15 @@ pub async fn get_symbols_with_ids(
                 cs.confidence,
                 cs.source_lang,
                 cs.context,
+                cs.binary_path,
+                cs.probe_type,
+                cs.validated,
                 c.product AS cpe_product,
                 c.source AS cpe_source
             FROM cve_symbols cs
             LEFT JOIN findings f ON f.cve_id = cs.cve_id
             LEFT JOIN cpes c ON c.id = f.cpe_id
+            WHERE cs.validated = TRUE
             ORDER BY cs.id
             "#,
     )
@@ -64,19 +68,9 @@ pub async fn get_symbols_with_ids(
     .map(|rows| {
         rows.into_iter()
             .map(|row| {
-                let cpe_product = row.cpe_product.clone();
-                let cpe_source = row.cpe_source.clone();
-                let symbol = Symbol {
-                    name: row.name,
-                    source_lang: SourceLang::from_str(&row.source_lang)
-                        .unwrap_or(SourceLang::Unknown),
-                    confidence: SymbolConfidence::from_str(&row.confidence)
-                        .unwrap_or(SymbolConfidence::Low),
-                    cve_id: row.cve_id,
-                    source: row.source,
-                    context: row.context,
-                };
-                (row.id, symbol, cpe_product, cpe_source)
+                let id = row.base.id;
+                let symbol = row.base.into_symbol();
+                (id, symbol)
             })
             .collect()
     })
@@ -122,6 +116,9 @@ pub async fn get_symbols_for_cve_with_activity(
             cs.confidence,
             cs.source_lang,
             cs.context,
+            cs.binary_path,
+            cs.probe_type,
+            cs.validated,
             sa.total_calls,
             sa.distinct_pids,
             sa.last_seen
@@ -137,18 +134,10 @@ pub async fn get_symbols_for_cve_with_activity(
     .map(|rows| {
         rows.into_iter()
             .map(|row| {
-                let symbol = Symbol {
-                    name: row.name,
-                    source_lang: SourceLang::from_str(&row.source_lang)
-                        .unwrap_or(SourceLang::Unknown),
-                    confidence: SymbolConfidence::from_str(&row.confidence)
-                        .unwrap_or(SymbolConfidence::Low),
-                    cve_id: row.cve_id,
-                    source: row.source,
-                    context: row.context,
-                };
+                let id = row.base.id;
+                let symbol = row.base.into_symbol();
                 (
-                    row.id,
+                    id,
                     symbol,
                     row.total_calls,
                     row.distinct_pids,

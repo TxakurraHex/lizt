@@ -45,4 +45,7 @@ pub struct Symbol {
     pub cve_id: String,
     pub source: String, // Description, git diff, etc.
     pub context: String,
+    pub binary_path: Option<String>,
+    pub probe_type: Option<String>, // "kprobe" or "uprobe"
+    pub validated: bool,
 }
