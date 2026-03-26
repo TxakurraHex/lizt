@@ -352,8 +352,10 @@ impl LiztClient {
 }
 
 fn to_patch_url(url: &str) -> Option<String> {
+    let trimmed = url.trim_end_matches('/');
+
     if url.contains("github.com") || url.contains("gitlab.com") {
-        Some(format!("{}.patch", url.trim_end_matches('/')))
+        Some(format!("{}.patch", trimmed))
     } else if url.contains("git.kernel.org") {
         // kernel.org uses a PoW rate-limiter, not dealing with that (yet...) just use GitHub mirror
         let hash = url
@@ -364,6 +366,24 @@ fn to_patch_url(url: &str) -> Option<String> {
         Some(format!(
             "https://github.com/torvalds/linux/commit/{hash}.patch"
         ))
+    } else if url.contains("gitlab.") {
+        // Self-hosted GitLab instances (e.g., gitlab.freedesktop.org, gitlab.gnome.org)
+        let clean = trimmed.trim_end_matches(".git");
+        Some(format!("{clean}.patch"))
+    } else if url.contains("/cgit/") || url.contains("git.savannah.gnu.org") {
+        // cgit instances — convert commit URLs with ?id=HASH to patch format
+        if url.contains("?id=") || url.contains("&id=") {
+            let base = url.split('?').next()?;
+            let hash = url
+                .split('?')
+                .nth(1)
+                .and_then(|qs| qs.split('&').find(|p| p.starts_with("id=")))
+                .map(|p| &p[3..])?;
+            let patch_base = base.trim_end_matches("/commit");
+            Some(format!("{patch_base}/patch/?id={hash}"))
+        } else {
+            None
+        }
     } else {
         None
     }

@@ -1,5 +1,6 @@
 use crate::extractor::Scraper;
 use crate::scrapers::description::scrape_description;
+use crate::scrapers::filters::{is_likely_function_name, is_test_path};
 use async_trait::async_trait;
 use common::cve::{Cve, CveRef};
 use common::symbol::{SourceLang, Symbol, SymbolConfidence};
@@ -98,89 +99,149 @@ pub fn scrape_diff(diff_string: String, commit_url: &str, cve_id: &String) -> Ve
         go_func_regex,
         func_call_regex,
     ) = diff_regexes();
+
     const IGNORED_KEYWORDS: &[&str] = &[
-        "if", "for", "while", "switch", "return", "sizeof", "malloc", "free",
+        // Control flow
+        "if",
+        "for",
+        "while",
+        "switch",
+        "return",
+        "else",
+        "case",
+        "goto",
+        "do",
+        "break",
+        "continue",
+        // Memory allocation (too generic, present in nearly every diff)
+        "sizeof",
+        "malloc",
+        "free",
+        "calloc",
+        "realloc",
+        "kfree",
+        "kzalloc",
+        "kmalloc",
+        "vmalloc",
+        "vfree",
+        // String/memory ops
+        "memcpy",
+        "memset",
+        "memmove",
+        "strlen",
+        "strcmp",
+        "strncmp",
+        "strcpy",
+        "strncpy",
+        "snprintf",
+        "sprintf",
+        "printf",
+        "fprintf",
+        // Kernel logging/debug (ubiquitous, never the vulnerable function)
+        "printk",
+        "pr_err",
+        "pr_info",
+        "pr_warn",
+        "pr_debug",
+        "dev_err",
+        "dev_info",
+        "dev_warn",
+        "dev_dbg",
+        // Kernel assertions/checks
+        "WARN",
+        "WARN_ON",
+        "WARN_ON_ONCE",
+        "BUG",
+        "BUG_ON",
+        "ASSERT",
+        "assert",
+        // Kernel error helpers
+        "IS_ERR",
+        "PTR_ERR",
+        "ERR_PTR",
+        "ERR_CAST",
+        "NULL",
+        // Cast operators
+        "static_cast",
+        "reinterpret_cast",
+        "dynamic_cast",
+        "const_cast",
+        // Other common non-vulnerable helpers
+        "typeof",
+        "offsetof",
+        "container_of",
+        "likely",
+        "unlikely",
     ];
+
     let lines: Vec<&str> = diff_string.lines().collect();
+    let mut in_test_file = false;
+
     for (i, line) in lines.iter().enumerate() {
+        // Track file paths from diff headers
+        if let Some(path) = line.strip_prefix("+++ b/") {
+            in_test_file = is_test_path(path);
+            continue;
+        }
+        if line.starts_with("--- a/") {
+            continue;
+        }
+
+        // Skip test/example files entirely
+        if in_test_file {
+            continue;
+        }
+
         let context_range = |before: usize, after: usize| -> String {
             let lo = i.saturating_sub(before);
             let hi = (i + after + 1).min(lines.len());
             lines[lo..hi].join("\n")
         };
 
-        if let Some(cap) = c_func_regex.captures(line) {
-            symbols.push(Symbol {
-                name: cap[2].to_string(),
-                source: source.clone(),
-                confidence: SymbolConfidence::High,
-                context: context_range(2, 2),
-                cve_id: cve_id.into(),
-
-                source_lang: SourceLang::C,
-            });
-        }
-
-        if let Some(cap) = python_def_regex.captures(line) {
-            symbols.push(Symbol {
-                name: cap[1].to_string(),
-                source: source.clone(),
-                confidence: SymbolConfidence::High,
-                context: context_range(2, 2),
-                cve_id: cve_id.into(),
-
-                source_lang: SourceLang::Python,
-            });
-        }
-
-        if let Some(cap) = java_method_regex.captures(line) {
-            symbols.push(Symbol {
-                name: cap[1].to_string(),
-                source: source.clone(),
-                confidence: SymbolConfidence::High,
-                context: context_range(2, 2),
-                cve_id: cve_id.into(),
-
-                source_lang: SourceLang::Java,
-            });
-        }
-
-        if let Some(cap) = rust_fn_regex.captures(line) {
-            symbols.push(Symbol {
-                name: cap[1].to_string(),
-                source: source.clone(),
-                confidence: SymbolConfidence::High,
-                context: context_range(2, 2),
-                cve_id: cve_id.into(),
-
-                source_lang: SourceLang::Rust,
-            });
-        }
-
-        if let Some(cap) = go_func_regex.captures(line) {
-            symbols.push(Symbol {
-                name: cap[1].to_string(),
-                source: source.clone(),
-                confidence: SymbolConfidence::High,
-                context: context_range(2, 2),
-                cve_id: cve_id.into(),
-
-                source_lang: SourceLang::Go,
-            });
+        // Language-specific function definition regexes.
+        // Each entry: (regex, capture group index for the name, source language).
+        let def_regexes: &[(&Regex, usize, SourceLang)] = &[
+            (c_func_regex, 2, SourceLang::C),
+            (python_def_regex, 1, SourceLang::Python),
+            (java_method_regex, 1, SourceLang::Java),
+            (rust_fn_regex, 1, SourceLang::Rust),
+            (go_func_regex, 1, SourceLang::Go),
+        ];
+        for &(regex, group, ref lang) in def_regexes {
+            if let Some(cap) = regex.captures(line) {
+                let name = &cap[group];
+                if is_likely_function_name(name) {
+                    symbols.push(Symbol {
+                        name: name.to_string(),
+                        source: source.clone(),
+                        confidence: SymbolConfidence::High,
+                        context: context_range(2, 2),
+                        cve_id: cve_id.into(),
+                        source_lang: lang.clone(),
+                        binary_path: None,
+                        probe_type: None,
+                        validated: false,
+                    });
+                }
+            }
         }
 
         if line.starts_with("+") || line.starts_with("-") {
             for cap in func_call_regex.captures_iter(line) {
                 let name = &cap[1];
-                if !IGNORED_KEYWORDS.contains(&name) {
+                if !IGNORED_KEYWORDS.contains(&name) && is_likely_function_name(name) {
                     symbols.push(Symbol {
                         name: name.to_string(),
                         source: source.clone(),
-                        confidence: SymbolConfidence::Medium,
+                        // Downgraded from Medium to Low — generic call matches are too noisy.
+                        // Higher-confidence definition matches will supersede during dedup.
+                        confidence: SymbolConfidence::Low,
                         context: context_range(1, 1),
                         cve_id: cve_id.into(),
-
                         source_lang: SourceLang::Unknown,
+                        binary_path: None,
+                        probe_type: None,
+                        validated: false,
                     });
                 }
             }

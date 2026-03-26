@@ -5,47 +5,25 @@ use regex::Regex;
 use std::sync::OnceLock;
 
 use crate::extractor::Scraper;
+use crate::scrapers::filters::is_likely_function_name;
 
-fn function_name_pattern_regexes() -> &'static (Regex, Regex, Regex, Regex, Regex) {
-    static REGEXES: OnceLock<(Regex, Regex, Regex, Regex, Regex)> = OnceLock::new();
+fn function_name_pattern_regexes() -> &'static (Regex, Regex, Regex, Regex, Regex, Regex) {
+    static REGEXES: OnceLock<(Regex, Regex, Regex, Regex, Regex, Regex)> = OnceLock::new();
     REGEXES.get_or_init(|| (
         Regex::new(r"\b([a-zA-Z_][a-zA-Z0-9_]{2,})\s*\(\)").unwrap(),
         Regex::new(r"`([a-zA-Z_][a-zA-Z0-9_]{2,})`").unwrap(),
         Regex::new(r#"(?i)(vulnerable function|affected function|function|method|symbol|API|call to)\s+[`"]?([a-zA-Z_][a-zA-Z0-9_]{2,})[`"]?"#, ).unwrap(),
         Regex::new(r#"(?i)[`"]?([a-zA-Z_][a-zA-Z0-9_]{2,})[`"]?\s+(vulnerable function|affected function|function|method|symbol|API|call from)"#,).unwrap(),
-        Regex::new(r#"\s+(__[a-zA-Z0-9_]*|do_[a-zA-Z0-9_]*|sys_[a-zA-Z0-9_]*|ksys_[a-zA-Z0-9_]*)"#).unwrap()
+        Regex::new(r#"\s+(__[a-zA-Z0-9_]*|do_[a-zA-Z0-9_]*|sys_[a-zA-Z0-9_]*|ksys_[a-zA-Z0-9_]*|nf_[a-zA-Z0-9_]*|ip_[a-zA-Z0-9_]*|tcp_[a-zA-Z0-9_]*|udp_[a-zA-Z0-9_]*|xfs_[a-zA-Z0-9_]*|ext4_[a-zA-Z0-9_]*|btrfs_[a-zA-Z0-9_]*|sk_[a-zA-Z0-9_]*|net_[a-zA-Z0-9_]*|sctp_[a-zA-Z0-9_]*)"#).unwrap(),
+        // "in <function>" pattern for kernel CVEs
+        Regex::new(r"(?i)\bin\s+([a-zA-Z_][a-zA-Z0-9_]{3,})\b").unwrap(),
     ))
 }
 
-const STOP_WORDS: &[&str] = &[
-    "the",
-    "does",
-    "when",
-    "these",
-    "those",
-    "this",
-    "that",
-    "function",
-    "method",
-    "symbol",
-    "helper",
-    "streaming",
-    "write",
-    "read",
-    "call",
-    "error",
-    "value",
-    "buffer",
-    "memory",
-    "pointer",
-    "integer",
-    "string",
-    "type",
-    "true",
-    "false",
-    "null",
-    "none",
-];
+fn is_kernel_description(description: &str) -> bool {
+    let lower = description.to_lowercase();
+    lower.contains("kernel") || lower.contains("linux")
+}
 
 pub struct DescriptionScraper;
 
@@ -65,6 +43,7 @@ impl Scraper for DescriptionScraper {
 
 pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
     let mut symbols = Vec::new();
+    let is_kernel = is_kernel_description(description);
 
     let (
         parenthesis_regex,
@@ -72,6 +51,7 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
         keyword_symbol_regex,
         symbol_keyword_regex,
         kernel_prefix_regex,
+        in_function_regex,
     ) = function_name_pattern_regexes();
 
     for cap in parenthesis_regex.captures_iter(description) {
@@ -83,22 +63,34 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             confidence: SymbolConfidence::Medium,
             context,
             cve_id: cve_id.into(),
-
             source_lang: SourceLang::Unknown,
+            binary_path: None,
+            probe_type: None,
+            validated: false,
         });
     }
 
     for cap in backtick_regex.captures_iter(description) {
+        let name = &cap[1];
+        // Reject file paths, version strings, digit-prefixed names
+        if name.contains('/')
+            || name.contains('.')
+            || name.starts_with(|c: char| c.is_ascii_digit())
+        {
+            continue;
+        }
         let m = cap.get(0).unwrap();
         let context = surrounding(description, m.start(), m.end(), 50);
         symbols.push(Symbol {
-            name: cap[1].to_string(),
+            name: name.to_string(),
             source: "description".into(),
             confidence: SymbolConfidence::Low,
             context,
             cve_id: cve_id.into(),
-
             source_lang: SourceLang::Unknown,
+            binary_path: None,
+            probe_type: None,
+            validated: false,
         });
     }
 
@@ -111,8 +103,10 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             confidence: SymbolConfidence::Low,
             context,
             cve_id: cve_id.into(),
-
             source_lang: SourceLang::Unknown,
+            binary_path: None,
+            probe_type: None,
+            validated: false,
         });
     }
 
@@ -125,29 +119,62 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             confidence: SymbolConfidence::Low,
             context,
             cve_id: cve_id.into(),
-
             source_lang: SourceLang::Unknown,
+            binary_path: None,
+            probe_type: None,
+            validated: false,
         });
     }
 
     for cap in kernel_prefix_regex.captures_iter(description) {
         let m = cap.get(0).unwrap();
         let context = surrounding(description, m.start(), m.end(), 50);
+        // Boost to Medium for kernel CVEs since these prefixes are highly specific
+        let confidence = if is_kernel {
+            SymbolConfidence::Medium
+        } else {
+            SymbolConfidence::Low
+        };
         symbols.push(Symbol {
             name: cap[1].to_string(),
             source: "description".into(),
-            confidence: SymbolConfidence::Low,
+            confidence,
             context,
             cve_id: cve_id.into(),
-
-            source_lang: SourceLang::Unknown,
+            source_lang: if is_kernel {
+                SourceLang::Kernel
+            } else {
+                SourceLang::Unknown
+            },
+            binary_path: None,
+            probe_type: None,
+            validated: false,
         });
     }
 
-    // Filter out common, English-language words (unlikely to be functions)
+    // "in <function>" pattern — only for kernel CVEs to avoid excessive noise
+    if is_kernel {
+        for cap in in_function_regex.captures_iter(description) {
+            let m = cap.get(0).unwrap();
+            let context = surrounding(description, m.start(), m.end(), 50);
+            symbols.push(Symbol {
+                name: cap[1].to_string(),
+                source: "description".into(),
+                confidence: SymbolConfidence::Low,
+                context,
+                cve_id: cve_id.into(),
+                source_lang: SourceLang::Kernel,
+                binary_path: None,
+                probe_type: None,
+                validated: false,
+            });
+        }
+    }
+
+    // Filter using shared filtering logic
     symbols
         .into_iter()
-        .filter(|s| !STOP_WORDS.contains(&s.name.to_lowercase().as_str()))
+        .filter(|s| is_likely_function_name(&s.name))
         .collect()
 }
 

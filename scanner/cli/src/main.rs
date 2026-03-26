@@ -1,8 +1,8 @@
 use clap::{Parser, Subcommand};
 use inquire::error::InquireError;
 use inquire::{Confirm, Select, Text};
-use log::info;
-use pipeline::{PipelineError, ScanEvent, client_from_env, run_scan};
+use log::{error, info};
+use pipeline::{PipelineError, ScanEvent, client_from_env, run_eval, run_scan};
 use std::path::PathBuf;
 use tokio::sync::broadcast;
 
@@ -23,6 +23,12 @@ struct Cli {
 enum Commands {
     /// Run the full pipeline: inventory → CPE → CVE → symbol extraction
     Scan,
+    /// Run full scan pipeline against a fixed evaluation set
+    Eval {
+        /// Fixture name: sudo, bash, libexpat, openssl, all
+        #[arg(long)]
+        fixture: String,
+    },
     /// Generate or update vulnerability rankings
     Rank,
     /// Drop and recreate the database, then re-run migrations
@@ -67,21 +73,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             loop {
                 match rx.recv().await {
                     Ok(ScanEvent::Started { scan_id }) => {
-                        println!("Started: [{scan_id}]");
+                        info!("Started: [{scan_id}]");
                     }
                     Ok(ScanEvent::Stage { stage, detail }) => {
-                        println!("[{stage}] {detail}");
+                        info!("[{stage}] {detail}");
                     }
                     Ok(ScanEvent::Complete { scan_id }) => {
-                        println!("Scan complete ({scan_id})");
+                        info!("Scan complete ({scan_id})");
                         break;
                     }
                     Ok(ScanEvent::Failed { scan_id, error }) => {
-                        eprintln!("Scan failed ({scan_id}): {error}");
+                        error!("Scan failed ({scan_id}): {error}");
                         break;
                     }
                     Err(broadcast::error::RecvError::Lagged(n)) => {
-                        eprintln!("Warning: dropped {n} progress events (channel lagged)");
+                        error!("Warning: dropped {n} progress events (channel lagged)");
                     }
                     Err(broadcast::error::RecvError::Closed) => break,
                 }
@@ -89,7 +95,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             match handle.await? {
                 Ok(_) => {}
-                Err(PipelineError::AlreadyRunning) => eprintln!("A scan is already running."),
+                Err(PipelineError::AlreadyRunning) => error!("A scan is already running."),
+                Err(PipelineError::Db(e)) => return Err(e.into()),
+                Err(PipelineError::Stage { stage, source }) => {
+                    return Err(format!("stage {stage} failed: {source}").into());
+                }
+            }
+        }
+
+        Commands::Eval { fixture } => {
+            let (tx, mut rx) = broadcast::channel::<ScanEvent>(32);
+
+            let pool_clone = pool.clone();
+            let client_clone = client.clone();
+            let tx_clone = tx.clone();
+            let fixture_clone = fixture.clone();
+            let handle = tokio::spawn(async move {
+                run_eval(&pool_clone, client_clone, &fixture_clone, tx_clone).await
+            });
+
+            loop {
+                match rx.recv().await {
+                    Ok(ScanEvent::Started { scan_id }) => {
+                        info!("Started eval ({fixture}): [{scan_id}]");
+                    }
+                    Ok(ScanEvent::Stage { stage, detail }) => {
+                        info!("[{stage}] {detail}");
+                    }
+                    Ok(ScanEvent::Complete { scan_id }) => {
+                        info!("Eval complete ({scan_id})");
+                        break;
+                    }
+                    Ok(ScanEvent::Failed { scan_id, error }) => {
+                        error!("Eval failed ({scan_id}): {error}");
+                        break;
+                    }
+                    Err(broadcast::error::RecvError::Lagged(n)) => {
+                        error!("Warning: dropped {n} progress events (channel lagged)");
+                    }
+                    Err(broadcast::error::RecvError::Closed) => break,
+                }
+            }
+
+            match handle.await? {
+                Ok(_) => {}
+                Err(PipelineError::AlreadyRunning) => error!("A scan is already running."),
                 Err(PipelineError::Db(e)) => return Err(e.into()),
                 Err(PipelineError::Stage { stage, source }) => {
                     return Err(format!("stage {stage} failed: {source}").into());
@@ -108,12 +158,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .prompt()?;
 
             if !confirmed {
-                println!("Reset cancelled.");
+                info!("Reset cancelled.");
                 return Ok(());
             }
 
             db::reset().await?;
-            println!("Database reset.");
+            info!("Database reset.");
         }
 
         Commands::Configure => run_configure()?,
@@ -131,6 +181,7 @@ enum MenuSelection {
 
 fn interactive_menu() -> Result<MenuSelection, Box<dyn std::error::Error>> {
     const SCAN: &str = "Scan       — run full vulnerability scan";
+    const EVAL: &str = "Eval       — run scan against an evaluation fixture";
     const RANK: &str = "Rank       — generate vulnerability rankings";
     const CONFIGURE: &str = "Configure  — update API keys and settings";
     const RESET: &str = "Reset      — clear the database";
@@ -138,7 +189,7 @@ fn interactive_menu() -> Result<MenuSelection, Box<dyn std::error::Error>> {
 
     let choice = match Select::new(
         "What would you like to do?",
-        vec![SCAN, RANK, CONFIGURE, RESET, QUIT],
+        vec![SCAN, EVAL, RANK, CONFIGURE, RESET, QUIT],
     )
     .prompt()
     {
@@ -151,6 +202,16 @@ fn interactive_menu() -> Result<MenuSelection, Box<dyn std::error::Error>> {
 
     Ok(match choice {
         SCAN => MenuSelection::Run(Commands::Scan),
+        EVAL => {
+            let fixture = Select::new(
+                "Choose evaluation fixture:",
+                vec!["sudo", "bash", "libexpat", "openssl", "all"],
+            )
+            .prompt()?;
+            MenuSelection::Run(Commands::Eval {
+                fixture: fixture.to_string(),
+            })
+        }
         RANK => MenuSelection::Run(Commands::Rank),
         CONFIGURE => MenuSelection::Run(Commands::Configure),
         RESET => MenuSelection::Run(Commands::Reset { confirm: false }),
@@ -186,7 +247,7 @@ fn load_config() {
 
 fn run_configure() -> Result<(), Box<dyn std::error::Error>> {
     let path = config_path();
-    println!("Configure Lizt  (saved to {})", path.display());
+    info!("Configure Lizt  (saved to {})", path.display());
 
     let nvd_key = Text::new("NVD API Key:")
         .with_initial_value(&std::env::var("NVD_API_KEY").unwrap_or_default())
@@ -207,6 +268,6 @@ fn run_configure() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     std::fs::write(&path, lines.join("\n") + "\n")?;
-    println!("Saved to {}", path.display());
+    info!("Saved to {}", path.display());
     Ok(())
 }

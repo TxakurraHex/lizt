@@ -1,8 +1,10 @@
 use common::cve::Cve;
 use common::finding_record::FindingRecord;
+use common::resolved_symbol::SymbolIndex;
 use common::scan::{Scan, ScanStatus};
 use common::symbol::Symbol;
 use db::scans_table;
+use io_inventory::fixtures;
 use io_inventory::inventory::{Inventory, Source};
 use io_inventory::sources::{
     dpkg_inv_source::DpkgSource, linux_kernel_inv_source::LinuxKernelSource,
@@ -19,7 +21,6 @@ use std::{collections::HashMap, sync::Arc};
 use thiserror::Error;
 use tokio::sync::broadcast;
 use uuid::Uuid;
-
 // -- Errors ------------------------------------------------------------------------------ //
 
 #[derive(Debug, Error)]
@@ -54,6 +55,7 @@ pub enum ScanStage {
     CpeResolution,
     CveLookup,
     SymbolExtraction,
+    SymbolValidation,
     Persisting,
 }
 
@@ -64,6 +66,7 @@ impl std::fmt::Display for ScanStage {
             ScanStage::CpeResolution => write!(f, "cpe_resolution"),
             ScanStage::CveLookup => write!(f, "cve_lookup"),
             ScanStage::SymbolExtraction => write!(f, "symbol_extraction"),
+            ScanStage::SymbolValidation => write!(f, "symbol_validation"),
             ScanStage::Persisting => write!(f, "persisting"),
         }
     }
@@ -94,10 +97,25 @@ pub async fn run_scan(
     let mut scan = scans_table::insert_scan(pool).await?;
     let scan_id = scan.id;
 
-    // Emit before any stage so subscribers can get the ID
     let _ = events.send(ScanEvent::Started { scan_id });
 
-    let result = execute(pool, client, &events, &scan).await;
+    emit(
+        &events,
+        ScanStage::Inventory,
+        "Collecting system inventory...",
+    );
+    info!("Collecting system inventory...");
+
+    let sources: Vec<Box<dyn Source>> = vec![
+        Box::new(PipSource),
+        Box::new(DpkgSource),
+        Box::new(UbuntuSource),
+        Box::new(LinuxKernelSource),
+    ];
+    let mut inventory = Inventory::new(sources);
+    inventory.collect();
+
+    let result = execute(pool, client, &events, &scan, inventory).await;
 
     scan.finished_at = Some(chrono::Utc::now());
     scan.status = match &result {
@@ -105,6 +123,71 @@ pub async fn run_scan(
         Err(_) => ScanStatus::Failed.to_string(),
     };
     // Log error if the scan failed
+    if let Err(e) = scans_table::update_scan(pool, &scan).await {
+        error!("Failed to update scan record {scan_id}: {e}");
+    }
+
+    match &result {
+        Ok(_) => {
+            let _ = events.send(ScanEvent::Complete { scan_id });
+        }
+        Err(e) => {
+            let _ = events.send(ScanEvent::Failed {
+                scan_id,
+                error: e.to_string(),
+            });
+        }
+    }
+
+    result.map(|_| scan_id)
+}
+
+/// Run the pipeline against a fixed evaluation fixture instead of the live system inventory.
+///
+/// Identical to [`run_scan`] except the inventory is built from `fixture_name` and the scan
+/// record is tagged with that name so eval runs are distinguishable in the database.
+///
+/// Valid fixture names: `sudo`, `bash`, `libexpat`, `openssl`, `all`.
+pub async fn run_eval(
+    pool: &PgPool,
+    client: Arc<LiztClient>,
+    fixture_name: &str,
+    events: broadcast::Sender<ScanEvent>,
+) -> Result<Uuid, PipelineError> {
+    let mut inventory = match fixture_name {
+        "sudo" => fixtures::sudo_cve_2021_3156(),
+        "bash" => fixtures::bash_cve_2014_6271(),
+        "libexpat" => fixtures::libexpat_cve_2022_25236(),
+        "openssl" => fixtures::openssl_cve_2022_0778(),
+        "all" => fixtures::all_eval_fixtures(),
+        other => {
+            return Err(PipelineError::Stage {
+                stage: "eval",
+                source: format!(
+                    "unknown fixture '{other}'; valid: sudo, bash, libexpat, openssl, all"
+                )
+                .into(),
+            });
+        }
+    };
+    inventory.collect();
+
+    let mut scan = scans_table::insert_scan(pool).await?;
+    let scan_id = scan.id;
+
+    if let Err(e) = db::scans_table::set_fixture_name(pool, &scan_id, fixture_name).await {
+        error!("Failed to tag scan {scan_id} with fixture name: {e}");
+    }
+
+    let _ = events.send(ScanEvent::Started { scan_id });
+
+    let result = execute(pool, client, &events, &scan, inventory).await;
+
+    scan.finished_at = Some(chrono::Utc::now());
+    scan.status = match &result {
+        Ok(_) => ScanStatus::Complete.to_string(),
+        Err(_) => ScanStatus::Failed.to_string(),
+    };
     if let Err(e) = scans_table::update_scan(pool, &scan).await {
         error!("Failed to update scan record {scan_id}: {e}");
     }
@@ -139,19 +222,8 @@ async fn execute(
     client: Arc<LiztClient>,
     events: &broadcast::Sender<ScanEvent>,
     scan: &Scan,
+    inventory: Inventory,
 ) -> Result<(), PipelineError> {
-    // Stage 1: inventory
-    emit(events, ScanStage::Inventory, "Collecting system inventory…");
-    info!("Collecting system inventory…");
-
-    let sources: Vec<Box<dyn Source>> = vec![
-        Box::new(PipSource),
-        Box::new(DpkgSource),
-        Box::new(UbuntuSource),
-        Box::new(LinuxKernelSource),
-    ];
-    let mut inventory = Inventory::new(sources);
-    inventory.collect();
     for item in &inventory.items {
         info!("{:?}", item);
     }
@@ -160,9 +232,9 @@ async fn execute(
     emit(
         events,
         ScanStage::CpeResolution,
-        "Resolving CPE entries against NVD…",
+        "Resolving CPE entries against NVD...",
     );
-    info!("Resolving CPE entries against NVD…");
+    info!("Resolving CPE entries against NVD...");
 
     let resolver = CpeResolver::new(Arc::clone(&client));
     let cpe_entries = resolver.resolve_all(&inventory.items).await;
@@ -178,12 +250,12 @@ async fn execute(
         events,
         ScanStage::CveLookup,
         format!(
-            "Querying NVD for CVEs across {} CPE entries…",
+            "Querying NVD for CVEs across {} CPE entries...",
             cpe_ids.len()
         ),
     );
     info!(
-        "Querying NVD for CVEs across {} CPE entries…",
+        "Querying NVD for CVEs across {} CPE entries...",
         cpe_ids.len()
     );
 
@@ -223,17 +295,38 @@ async fn execute(
     emit(
         events,
         ScanStage::SymbolExtraction,
-        format!("Extracting vulnerable symbols from {} CVEs…", cves.len()),
+        format!("Extracting vulnerable symbols from {} CVEs...", cves.len()),
     );
-    info!("Extracting vulnerable symbols from {} CVEs…", cves.len());
+    info!("Extracting vulnerable symbols from {} CVEs...", cves.len());
 
-    let symbols = extract_symbols(cves, &client).await;
+    let mut symbols = extract_symbols(cves, &client).await;
+
+    // Stage 5: symbol validation
+    emit(
+        events,
+        ScanStage::SymbolValidation,
+        format!(
+            "Validating {} symbols against system binaries...",
+            symbols.len()
+        ),
+    );
+    info!(
+        "Validating {} symbols against system binaries...",
+        symbols.len()
+    );
+
+    let package_hints: Vec<(String, String)> = cpe_entries
+        .iter()
+        .map(|entry| (entry.cpe.name.clone(), entry.source.to_string()))
+        .collect();
+
+    validate_symbols(&mut symbols, &package_hints);
 
     // Stage 5: persist symbols
     emit(
         events,
         ScanStage::Persisting,
-        format!("Persisting {} symbols to database…", symbols.len()),
+        format!("Persisting {} symbols to database...", symbols.len()),
     );
 
     for symbol in &symbols {
@@ -289,5 +382,30 @@ async fn extract_symbols(cves: Vec<Cve>, client: &Arc<LiztClient>) -> Vec<Symbol
     ];
     let mut extractor = CveSymbolExtractor::new(scrapers);
     extractor.extract_symbols(&cves).await;
+    extractor.validate();
+    extractor.infer_languages(&cves);
     extractor.symbols
+}
+
+fn validate_symbols(symbols: &mut [Symbol], package_hints: &[(String, String)]) {
+    let index = SymbolIndex::build(package_hints);
+    info!("Found {} symbols", index.entries.len());
+    if !index.is_available() {
+        info!("Symbol validation skipped (not running on Linux)");
+        return;
+    }
+    for symbol in symbols.iter_mut() {
+        if let Some(resolved) = index.resolve(&symbol.name)
+            && let Some(first) = resolved.first()
+        {
+            symbol.binary_path = Some(first.binary_path.to_string_lossy().into());
+            symbol.probe_type = Some(first.probe_type.to_string());
+            symbol.validated = true;
+        }
+    }
+    let (valid, total) = (
+        symbols.iter().filter(|s| s.validated).count(),
+        symbols.len(),
+    );
+    info!("Symbol validation: {valid}/{total} symbols confirmed on system.");
 }

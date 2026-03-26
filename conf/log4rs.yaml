@@ -21,7 +21,7 @@ appenders:
         count: 8
 
 root:
-  level: debug
+  level: warn
   appenders:
     - console
     - rolling_file
@@ -33,37 +33,55 @@ loggers:
     appenders:
       - console
       - rolling_file
-  lizt_cli:
+  cli:
     level: debug
     additive: false
     appenders:
       - console
       - rolling_file
-  lizt_core:
+  common:
     level: debug
     additive: false
     appenders:
       - console
       - rolling_file
-  lizt_db:
+  db:
     level: debug
     additive: false
     appenders:
       - console
       - rolling_file
-  lizt_inventory:
+  io_inventory:
     level: debug
     additive: false
     appenders:
       - console
       - rolling_file
-  lizt_rest:
+  io_nvd:
     level: debug
     additive: false
     appenders:
       - console
       - rolling_file
-  lizt_symbols:
+  io_symbols:
+    level: debug
+    additive: false
+    appenders:
+      - console
+      - rolling_file
+  pipeline:
+    level: debug
+    additive: false
+    appenders:
+      - console
+      - rolling_file
+  web:
+    level: debug
+    additive: false
+    appenders:
+      - console
+      - rolling_file
+  ebpf:
     level: debug
     additive: false
     appenders:
