@@ -1,5 +1,6 @@
 use common::cve::Cve;
 use common::finding_record::FindingRecord;
+use common::resolved_symbol::SymbolIndex;
 use common::scan::{Scan, ScanStatus};
 use common::symbol::Symbol;
 use db::scans_table;
@@ -20,7 +21,6 @@ use std::{collections::HashMap, sync::Arc};
 use thiserror::Error;
 use tokio::sync::broadcast;
 use uuid::Uuid;
-
 // -- Errors ------------------------------------------------------------------------------ //
 
 #[derive(Debug, Error)]
@@ -55,6 +55,7 @@ pub enum ScanStage {
     CpeResolution,
     CveLookup,
     SymbolExtraction,
+    SymbolValidation,
     Persisting,
 }
 
@@ -65,6 +66,7 @@ impl std::fmt::Display for ScanStage {
             ScanStage::CpeResolution => write!(f, "cpe_resolution"),
             ScanStage::CveLookup => write!(f, "cve_lookup"),
             ScanStage::SymbolExtraction => write!(f, "symbol_extraction"),
+            ScanStage::SymbolValidation => write!(f, "symbol_validation"),
             ScanStage::Persisting => write!(f, "persisting"),
         }
     }
@@ -100,9 +102,9 @@ pub async fn run_scan(
     emit(
         &events,
         ScanStage::Inventory,
-        "Collecting system inventory…",
+        "Collecting system inventory...",
     );
-    info!("Collecting system inventory…");
+    info!("Collecting system inventory...");
 
     let sources: Vec<Box<dyn Source>> = vec![
         Box::new(PipSource),
@@ -230,9 +232,9 @@ async fn execute(
     emit(
         events,
         ScanStage::CpeResolution,
-        "Resolving CPE entries against NVD…",
+        "Resolving CPE entries against NVD...",
     );
-    info!("Resolving CPE entries against NVD…");
+    info!("Resolving CPE entries against NVD...");
 
     let resolver = CpeResolver::new(Arc::clone(&client));
     let cpe_entries = resolver.resolve_all(&inventory.items).await;
@@ -248,12 +250,12 @@ async fn execute(
         events,
         ScanStage::CveLookup,
         format!(
-            "Querying NVD for CVEs across {} CPE entries…",
+            "Querying NVD for CVEs across {} CPE entries...",
             cpe_ids.len()
         ),
     );
     info!(
-        "Querying NVD for CVEs across {} CPE entries…",
+        "Querying NVD for CVEs across {} CPE entries...",
         cpe_ids.len()
     );
 
@@ -293,17 +295,38 @@ async fn execute(
     emit(
         events,
         ScanStage::SymbolExtraction,
-        format!("Extracting vulnerable symbols from {} CVEs…", cves.len()),
+        format!("Extracting vulnerable symbols from {} CVEs...", cves.len()),
     );
-    info!("Extracting vulnerable symbols from {} CVEs…", cves.len());
+    info!("Extracting vulnerable symbols from {} CVEs...", cves.len());
 
-    let symbols = extract_symbols(cves, &client).await;
+    let mut symbols = extract_symbols(cves, &client).await;
+
+    // Stage 5: symbol validation
+    emit(
+        events,
+        ScanStage::SymbolValidation,
+        format!(
+            "Validating {} symbols against system binaries...",
+            symbols.len()
+        ),
+    );
+    info!(
+        "Validating {} symbols against system binaries...",
+        symbols.len()
+    );
+
+    let package_hints: Vec<(String, String)> = cpe_entries
+        .iter()
+        .map(|entry| (entry.cpe.name.clone(), entry.source.to_string()))
+        .collect();
+
+    validate_symbols(&mut symbols, &package_hints);
 
     // Stage 5: persist symbols
     emit(
         events,
         ScanStage::Persisting,
-        format!("Persisting {} symbols to database…", symbols.len()),
+        format!("Persisting {} symbols to database...", symbols.len()),
     );
 
     for symbol in &symbols {
@@ -362,4 +385,27 @@ async fn extract_symbols(cves: Vec<Cve>, client: &Arc<LiztClient>) -> Vec<Symbol
     extractor.validate();
     extractor.infer_languages(&cves);
     extractor.symbols
+}
+
+fn validate_symbols(symbols: &mut [Symbol], package_hints: &[(String, String)]) {
+    let index = SymbolIndex::build(package_hints);
+    info!("Found {} symbols", index.entries.len());
+    if !index.is_available() {
+        info!("Symbol validation skipped (not running on Linux)");
+        return;
+    }
+    for symbol in symbols.iter_mut() {
+        if let Some(resolved) = index.resolve(&symbol.name)
+            && let Some(first) = resolved.first()
+        {
+            symbol.binary_path = Some(first.binary_path.to_string_lossy().into());
+            symbol.probe_type = Some(first.probe_type.to_string());
+            symbol.validated = true;
+        }
+    }
+    let (valid, total) = (
+        symbols.iter().filter(|s| s.validated).count(),
+        symbols.len(),
+    );
+    info!("Symbol validation: {valid}/{total} symbols confirmed on system.");
 }
