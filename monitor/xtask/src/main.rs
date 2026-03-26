@@ -55,8 +55,8 @@ fn install() -> Result<()> {
     create_dir_all(LOG_DIR)?;
 
     // 3. log4rs config
-    let log4rs_src = root.join("conf/lizt_monitord_log4rs.yaml");
-    let log4rs_dst = Path::new(CONF_DIR).join("lizt_monitord_log4rs.yaml");
+    let log4rs_src = root.join("conf/monitord_log4rs.yaml");
+    let log4rs_dst = Path::new(CONF_DIR).join("monitord_log4rs.yaml");
     copy_file_if_changed(&log4rs_src, &log4rs_dst)?;
 
     // 4. env file

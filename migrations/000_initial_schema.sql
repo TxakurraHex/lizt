@@ -4,6 +4,7 @@ CREATE TABLE
         id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
         started_at TIMESTAMPTZ NOT NULL DEFAULT NOW (),
         finished_at TIMESTAMPTZ,
+        fixture_name TEXT,
         status TEXT NOT NULL DEFAULT 'running' -- 'running', 'complete', 'failed'
     );
 

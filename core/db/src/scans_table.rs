@@ -28,6 +28,19 @@ pub async fn update_scan(pool: &PgPool, scan: &Scan) -> Result<Scan, sqlx::Error
     .await
 }
 
+pub async fn set_fixture_name(
+    pool: &PgPool,
+    scan_id: &Uuid,
+    fixture: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE scans SET fixture_name = $1 WHERE id = $2")
+        .bind(fixture)
+        .bind(scan_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 pub async fn get_scans(pool: &PgPool) -> Result<Vec<Scan>, sqlx::Error> {
     sqlx::query_as::<_, Scan>("SELECT * FROM scans")
         .fetch_all(pool)
