@@ -64,6 +64,9 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             context,
             cve_id: cve_id.into(),
             source_lang: SourceLang::Unknown,
+            binary_path: None,
+            probe_type: None,
+            validated: false,
         });
     }
 
@@ -85,6 +88,9 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             context,
             cve_id: cve_id.into(),
             source_lang: SourceLang::Unknown,
+            binary_path: None,
+            probe_type: None,
+            validated: false,
         });
     }
 
@@ -98,6 +104,9 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             context,
             cve_id: cve_id.into(),
             source_lang: SourceLang::Unknown,
+            binary_path: None,
+            probe_type: None,
+            validated: false,
         });
     }
 
@@ -111,6 +120,9 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             context,
             cve_id: cve_id.into(),
             source_lang: SourceLang::Unknown,
+            binary_path: None,
+            probe_type: None,
+            validated: false,
         });
     }
 
@@ -134,6 +146,9 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
             } else {
                 SourceLang::Unknown
             },
+            binary_path: None,
+            probe_type: None,
+            validated: false,
         });
     }
 
@@ -149,6 +164,9 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
                 context,
                 cve_id: cve_id.into(),
                 source_lang: SourceLang::Kernel,
+                binary_path: None,
+                probe_type: None,
+                validated: false,
             });
         }
     }

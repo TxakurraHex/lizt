@@ -218,6 +218,9 @@ pub fn scrape_diff(diff_string: String, commit_url: &str, cve_id: &String) -> Ve
                         context: context_range(2, 2),
                         cve_id: cve_id.into(),
                         source_lang: lang.clone(),
+                        binary_path: None,
+                        probe_type: None,
+                        validated: false,
                     });
                 }
             }
@@ -236,6 +239,9 @@ pub fn scrape_diff(diff_string: String, commit_url: &str, cve_id: &String) -> Ve
                         context: context_range(1, 1),
                         cve_id: cve_id.into(),
                         source_lang: SourceLang::Unknown,
+                        binary_path: None,
+                        probe_type: None,
+                        validated: false,
                     });
                 }
             }
