@@ -20,28 +20,36 @@ fn workspace_root() -> PathBuf {
 }
 
 fn main() -> Result<()> {
-    let task = env::args().nth(1);
-    match task.as_deref() {
-        Some("install") => install(),
+    let args: Vec<String> = env::args().collect();
+    let release = args.iter().any(|a| a == "--release");
+    let task = args
+        .iter()
+        .skip(1)
+        .find(|a| *a != "--release")
+        .map(String::as_str);
+    match task {
+        Some("install") => install(release),
         Some("uninstall") => uninstall(),
         _ => {
-            eprintln!("Usage: cargo xtask <install|uninstall>");
+            eprintln!("Usage: cargo xtask <install|uninstall> [--release]");
             std::process::exit(1);
         }
     }
 }
 
-fn install() -> Result<()> {
+fn install(release: bool) -> Result<()> {
     require_root()?;
 
     let root = workspace_root();
 
     // 1. Binary
-    let binary_src = root.join("target/release/lizt_monitord");
+    let profile = if release { "release" } else { "debug" };
+    let binary_src = root.join(format!("target/{profile}/lizt_monitord"));
     if !binary_src.exists() {
         bail!(
-            "Binary not found at {}. Run `cargo build --release -p epbf` first.",
-            binary_src.display()
+            "Binary not found at {}. Run `cargo build{} -p lizt_ebpf` first.",
+            binary_src.display(),
+            if release { " --release" } else { "" }
         );
     }
     let binary_dst = Path::new(BIN_DIR).join("lizt_monitord");
