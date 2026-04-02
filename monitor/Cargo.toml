@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/ebpf", "crates/ebpf_programs", "xtask"]
+members = ["crates/ebpf", "crates/ebpf_programs"]
 resolver = "2"
 
 [workspace.dependencies]

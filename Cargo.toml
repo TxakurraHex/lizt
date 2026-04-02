@@ -13,7 +13,7 @@ members = [
     "core/common",
     "core/db",
     # Tooling
-    # "xtask",
+    "xtask",
 ]
 exclude = ["monitor"]
 resolver = "2"
