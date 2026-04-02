@@ -34,8 +34,11 @@ System inventory → CPE matching → CVE lookup → Symbol extraction → Symbo
 ```
 lizt/
   Cargo.toml              # Scanner workspace
+  .cargo/config.toml      # Defines `cargo xtask` alias
+  xtask/                  # Install/uninstall tasks for all binaries
   scanner/
-    cli/                  # CLI binary (scan, inventory, symbols, rank, reset, configure)
+    cli/                  # CLI binary: lizt (scan, inventory, symbols, rank, reset, configure)
+    web/                  # Web dashboard binary: lizt_web (Axum, port 8080)
   io/
     inventory/            # System inventory collection
     nvd/                  # NVD, GitHub, and OSV HTTP client
@@ -44,9 +47,9 @@ lizt/
   core/                   # Shared crates (used by both scanner and monitor)
     common/               # Domain models (Symbol, Cve, CpeEntry, FindingRecord, ResolvedSymbol, etc.)
     db/                   # PostgreSQL database layer
+  conf/                   # Shared config templates (log4rs, env, systemd unit)
   monitor/                # Monitor workspace (Linux only)
     Cargo.toml
-    Makefile              # Build and systemd install targets
     crates/
       ebpf/               # Userspace eBPF loader and observer (daemon binary)
       ebpf_programs/      # Kernel-side BPF programs (compiled to bpfel-unknown-none)
@@ -92,14 +95,13 @@ export DATABASE_NAME="lizt"
 ### 2. Build the scanner
 
 ```bash
-cargo build
+cargo build --release           # builds lizt, lizt_web, and xtask
 ```
 
 ### 3. Build the monitor (Linux only)
 
 ```bash
-cd monitor
-cargo build -p ebpf
+cd monitor && cargo build --release -p lizt_ebpf
 ```
 
 The build compiles the BPF kernel programs (targeting `bpfel-unknown-none`) and embeds the
@@ -116,9 +118,31 @@ The database schema is applied automatically on first connection. Running `cargo
 without a subcommand opens an interactive TUI menu where you can select and run any command
 without remembering subcommand names.
 
-### 5. Run the monitor (Linux only, requires prior scan)
+### 5. Install (optional — for running as system services)
 
-**Ad-hoc:**
+The `xtask` binary installs binaries, config files, and systemd units for any of the three
+targets. Build it first with `cargo build --release`, then run it directly with `sudo -E` to
+preserve environment variables:
+
+```bash
+sudo -E ./target/release/xtask install cli      # /usr/bin/lizt + log config
+sudo -E ./target/release/xtask install web      # /usr/bin/lizt_web + nginx + systemd
+sudo -E ./target/release/xtask install monitor  # /usr/bin/lizt_monitord + systemd
+```
+
+To uninstall:
+
+```bash
+sudo -E ./target/release/xtask uninstall cli
+sudo -E ./target/release/xtask uninstall web
+sudo -E ./target/release/xtask uninstall monitor
+```
+
+Each install creates `/etc/lizt/env` from the template if it does not already exist — edit it
+to set `DATABASE_URL` and `NVD_API_KEY` before starting any service. Credentials are loaded
+via `EnvironmentFile=/etc/lizt/env` and never appear in the unit file or source tree.
+
+### 6. Run the monitor ad-hoc (Linux only, requires prior scan)
 
 ```bash
 sudo -E ./monitor/target/release/lizt_monitord
@@ -131,22 +155,6 @@ specific capabilities instead of running as root:
 sudo setcap cap_bpf,cap_perfmon+eip ./monitor/target/release/lizt_monitord
 ./monitor/target/release/lizt_monitord
 ```
-
-**As a systemd service:**
-
-```bash
-# Create /etc/lizt/env (mode 600) with credentials:
-#   DATABASE_URL=postgres://user:password@localhost/lizt
-#   NVD_API_KEY=your-nvd-api-key
-sudo install -Dm600 monitor/conf/env.example /etc/lizt/env
-# Edit /etc/lizt/env with real values, then install and start the service:
-cd monitor
-sudo make install
-sudo systemctl enable --now lizt_monitord
-```
-
-Credentials are loaded via `EnvironmentFile=/etc/lizt/env` and never appear in the unit file
-or source tree.
 
 ## CLI Subcommands (Scanner)
 
@@ -218,11 +226,17 @@ called, the kernel-side probe writes an event containing:
 The userspace daemon spawns one async Tokio task per probe. Each task wraps the ring buffer's
 file descriptor in a `tokio::io::unix::AsyncFd` to receive kernel readiness notifications
 without busy-polling. When the kernel signals that events are available, the task drains the
-ring buffer and inserts each event into the `symbol_observations` table:
+ring buffer and upserts each event into the `symbol_observations` table, incrementing
+`call_count` on repeat hits from the same process rather than inserting duplicate rows:
 
 ```sql
 INSERT INTO symbol_observations (cve_symbol_id, pid, process_name)
 VALUES ($1, $2, $3)
+ON CONFLICT (cve_symbol_id, pid)
+DO UPDATE SET
+    call_count   = symbol_observations.call_count + 1,
+    observed_at  = NOW(),
+    process_name = EXCLUDED.process_name
 ```
 
 ### Ranking integration
