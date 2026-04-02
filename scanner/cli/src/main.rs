@@ -46,8 +46,10 @@ enum Commands {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     load_config();
 
-    log4rs::init_file("/etc/lizt/lizt_log4rs.yaml", Default::default())
-        .unwrap_or_else(|_| eprintln!("log4rs config not found, using stderr"));
+    let log_conf_filepath = "/etc/lizt/lizt_log4rs.yaml";
+    log4rs::init_file(log_conf_filepath, Default::default()).unwrap_or_else(|_| {
+        eprintln!("log4rs config ({log_conf_filepath}) not found, using stderr")
+    });
 
     let pool = db::connect().await?;
     let client = client_from_env();

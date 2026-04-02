@@ -49,9 +49,14 @@ async fn poll_probe(probe: LoadedProbe, pool: &PgPool) -> Result<()> {
 
             sqlx::query(
                 r#"
-                    INSERT INTO symbol_observations (cve_symbol_id, pid, process_name)
-                    VALUES ($1, $2, $3)
-                    "#,
+                INSERT INTO symbol_observations (cve_symbol_id, pid, process_name)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (cve_symbol_id, pid)
+                DO UPDATE SET
+                    call_count   = symbol_observations.call_count + 1,
+                    observed_at  = NOW(),
+                    process_name = EXCLUDED.process_name
+                "#,
             )
             .bind(event.cve_symbol_id)
             .bind(event.pid as i32)

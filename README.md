@@ -92,14 +92,14 @@ export DATABASE_NAME="lizt"
 ### 2. Build the scanner
 
 ```bash
-cargo build --release
+cargo build
 ```
 
 ### 3. Build the monitor (Linux only)
 
 ```bash
 cd monitor
-make build
+cargo build -p ebpf
 ```
 
 The build compiles the BPF kernel programs (targeting `bpfel-unknown-none`) and embeds the
