@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="13" fill="#003057"/>
+
+  <!-- Wings -->
+  <ellipse cx="17" cy="13" rx="13" ry="5" fill="#C9A800" opacity="0.25" transform="rotate(-18 17 13)"/>
+  <ellipse cx="30" cy="11" rx="12" ry="4.5" fill="#C9A800" opacity="0.18" transform="rotate(-12 30 11)"/>
+
+  <!-- Head -->
+  <ellipse cx="11" cy="32" rx="8" ry="7" fill="#C9A800"/>
+
+  <!-- Thorax -->
+  <ellipse cx="25" cy="32" rx="10" ry="8.5" fill="#C9A800"/>
+  <rect x="19.5" y="24" width="1.8" height="16" rx="0.9" fill="#003057"/>
+  <rect x="23.5" y="24" width="1.8" height="16" rx="0.9" fill="#003057"/>
+  <rect x="27.5" y="24" width="1.8" height="16" rx="0.9" fill="#003057"/>
+
+  <!-- Abdomen -->
+  <ellipse cx="38" cy="32" rx="8" ry="7.5" fill="#C9A800"/>
+  <rect x="33.5" y="25.5" width="1.8" height="13" rx="0.9" fill="#003057"/>
+  <rect x="37.5" y="25.5" width="1.8" height="13" rx="0.9" fill="#003057"/>
+
+  <!-- Stinger -->
+  <line x1="46" y1="32" x2="56" y2="32" stroke="#C9A800" stroke-width="2" stroke-linecap="round"/>
+  <path d="M54 29.5 L58 32 L54 34.5" fill="#C9A800"/>
+</svg>
