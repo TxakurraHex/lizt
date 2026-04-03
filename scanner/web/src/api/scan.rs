@@ -1,4 +1,4 @@
-use super::state::AppState;
+use super::state::{AppState, ScanStageInfo};
 use axum::{
     Json,
     extract::{Path, State},
@@ -12,7 +12,9 @@ use chrono::{DateTime, Utc};
 use pipeline::{ScanEvent, run_scan};
 use serde::Serialize;
 use sqlx::types::Uuid;
-use tokio::sync::broadcast;
+use std::sync::Arc;
+use tokio::sync::broadcast::error::RecvError;
+use tokio::sync::{Mutex, broadcast};
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::BroadcastStream;
 
@@ -40,6 +42,14 @@ impl From<common::scan::Scan> for ScanRecord {
             status: s.status,
         }
     }
+}
+
+#[derive(Serialize)]
+pub struct ScanStatusResponse {
+    pub running: bool,
+    pub stage: Option<String>,
+    pub detail: Option<String>,
+    pub scan_id: Option<Uuid>,
 }
 
 // -- Handlers ---------------------------------------------------------------------------- //
@@ -74,8 +84,8 @@ pub async fn start(
             match rx.recv().await {
                 Ok(ScanEvent::Started { scan_id }) => return Ok(scan_id),
                 Ok(_) => continue,
-                Err(broadcast::error::RecvError::Lagged(_)) => continue,
-                Err(broadcast::error::RecvError::Closed) => {
+                Err(RecvError::Lagged(_)) => continue,
+                Err(RecvError::Closed) => {
                     return Err("pipeline exited before emitting Started".to_string());
                 }
             }
@@ -89,6 +99,9 @@ pub async fn start(
         )
     })?
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    // Run state receiver thread in background to keep track of updates
+    spawn_stage_tracker(scan_id, &state.scan_tx, state.scan_stage.clone());
 
     Ok(Json(StartScanResponse { scan_id }))
 }
@@ -157,4 +170,45 @@ pub async fn events(State(state): State<AppState>) -> impl IntoResponse {
         [("X-Accel-Buffering", "no"), ("Cache-Control", "no-cache")],
         sse,
     )
+}
+
+/// GET /api/scan/status: current scan state
+pub async fn status(State(state): State<AppState>) -> Json<ScanStatusResponse> {
+    let running = *state.scan_running.lock().await;
+    let stage_info = state.scan_stage.lock().await.clone();
+
+    Json(ScanStatusResponse {
+        running,
+        stage: stage_info.as_ref().map(|s| s.stage.clone()),
+        detail: stage_info.as_ref().map(|s| s.detail.clone()),
+        scan_id: stage_info.as_ref().map(|s| s.scan_id),
+    })
+}
+
+fn spawn_stage_tracker(
+    scan_id: Uuid,
+    tx: &broadcast::Sender<ScanEvent>,
+    scan_stage: Arc<Mutex<Option<ScanStageInfo>>>,
+) {
+    let mut rx = tx.subscribe();
+    tokio::spawn(async move {
+        loop {
+            match rx.recv().await {
+                Ok(ScanEvent::Stage { stage, detail }) => {
+                    *scan_stage.lock().await = Some(ScanStageInfo {
+                        scan_id,
+                        stage: stage.to_string(),
+                        detail,
+                    });
+                }
+                Ok(ScanEvent::Complete { .. }) | Ok(ScanEvent::Failed { .. }) => {
+                    *scan_stage.lock().await = None;
+                    break;
+                }
+                Ok(_) => continue,
+                Err(RecvError::Lagged(_)) => continue,
+                Err(RecvError::Closed) => break,
+            }
+        }
+    });
 }
