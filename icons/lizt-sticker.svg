@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="100" viewBox="0 0 192 100">
+  <rect x="1" y="1" width="190" height="98" rx="16" fill="#003057" stroke="#C9A800" stroke-width="1.5"/>
+
+  <!-- Wings -->
+  <ellipse cx="34" cy="30" rx="18" ry="6.5" fill="#C9A800" opacity="0.22" transform="rotate(-18 34 30)"/>
+  <ellipse cx="50" cy="28" rx="16" ry="6" fill="#C9A800" opacity="0.16" transform="rotate(-12 50 28)"/>
+
+  <!-- Head -->
+  <ellipse cx="24" cy="50" rx="10" ry="8.5" fill="#C9A800"/>
+
+  <!-- Thorax -->
+  <ellipse cx="40" cy="50" rx="12" ry="10" fill="#C9A800"/>
+  <rect x="34.5" y="41" width="2" height="18" rx="1" fill="#003057"/>
+  <rect x="39" y="41" width="2" height="18" rx="1" fill="#003057"/>
+  <rect x="43.5" y="41" width="2" height="18" rx="1" fill="#003057"/>
+
+  <!-- Abdomen -->
+  <ellipse cx="56" cy="50" rx="9.5" ry="8.5" fill="#C9A800"/>
+  <rect x="52" y="42.5" width="2" height="15" rx="1" fill="#003057"/>
+  <rect x="56.5" y="42.5" width="2" height="15" rx="1" fill="#003057"/>
+
+  <!-- Stinger -->
+  <line x1="65" y1="50" x2="78" y2="50" stroke="#C9A800" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M75.5 47.2 L80 50 L75.5 52.8" fill="#C9A800"/>
+
+  <!-- Wordmark -->
+  <text x="90" y="46"
+    font-family="ui-monospace, 'SF Mono', 'Menlo', 'Consolas', 'Courier New', monospace"
+    font-size="32" font-weight="700" letter-spacing="3"
+    fill="#C9A800">lizt</text>
+
+  <!-- Tagline — left-aligned with wasp head, right margin matches left -->
+  <text x="14" y="67"
+    text-anchor="start"
+    font-family="system-ui, -apple-system, sans-serif"
+    font-size="8.5" letter-spacing="1.5"
+    fill="#C9A800" opacity="0.55">RUNTIME REACHABILITY</text>
+</svg>

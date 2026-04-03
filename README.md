@@ -1,4 +1,6 @@
-# LIZT
+<p align="center">
+  <img src="icons/lizt-lockup-transparent.svg" alt="lizt" width="320">
+</p>
 
 A reachability-aware vulnerability analysis tool for Linux systems. LIZT collects a software
 inventory, maps it to CPE entries, queries the NVD API for CVEs, extracts vulnerable function
