@@ -4,6 +4,7 @@ use serde::Serialize;
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::{Mutex, broadcast};
+use uuid::Uuid;
 
 #[derive(Clone, Serialize)]
 pub struct ScanStageInfo {
