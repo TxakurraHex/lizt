@@ -100,8 +100,9 @@ pub async fn start(
     })?
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
-    // Run state receiver thread in background to keep track of updates
-    spawn_stage_tracker(scan_id, &state.scan_tx, state.scan_stage.clone());
+    // Reuse the existing receiver — it was subscribed before the scan spawned,
+    // so it won't miss early Stage events.
+    spawn_stage_tracker(scan_id, rx, state.scan_stage.clone());
 
     Ok(Json(StartScanResponse { scan_id }))
 }
@@ -187,10 +188,9 @@ pub async fn status(State(state): State<AppState>) -> Json<ScanStatusResponse> {
 
 fn spawn_stage_tracker(
     scan_id: Uuid,
-    tx: &broadcast::Sender<ScanEvent>,
+    mut rx: broadcast::Receiver<ScanEvent>,
     scan_stage: Arc<Mutex<Option<ScanStageInfo>>>,
 ) {
-    let mut rx = tx.subscribe();
     tokio::spawn(async move {
         loop {
             match rx.recv().await {
