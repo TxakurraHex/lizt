@@ -186,7 +186,7 @@ pub async fn status(State(state): State<AppState>) -> Json<ScanStatusResponse> {
     })
 }
 
-fn spawn_stage_tracker(
+pub(crate) fn spawn_stage_tracker(
     scan_id: Uuid,
     mut rx: broadcast::Receiver<ScanEvent>,
     scan_stage: Arc<Mutex<Option<ScanStageInfo>>>,
