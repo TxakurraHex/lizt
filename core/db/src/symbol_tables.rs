@@ -163,3 +163,54 @@ pub async fn get_symbols_for_cve_with_activity(
             .collect()
     })
 }
+
+pub async fn get_all_symbols_with_activity(
+    pool: &PgPool,
+) -> Result<Vec<(i64, Symbol, Option<i64>, Option<i64>, Option<DateTime<Utc>>)>, sqlx::Error> {
+    sqlx::query_as::<_, CveSymbolWithActivityRow>(
+        r#"
+        SELECT
+            cs.id,
+            cs.cve_id,
+            cs.name,
+            cs.source,
+            cs.confidence,
+            cs.source_lang,
+            cs.context,
+            cs.binary_path,
+            cs.probe_type,
+            cs.validated,
+            sa.total_calls,
+            sa.distinct_pids,
+            sa.last_seen
+        FROM cve_symbols as cs
+        LEFT JOIN (
+            SELECT
+                cve_symbol_id,
+                SUM(call_count)::BIGINT AS total_calls,
+                COUNT(DISTINCT pid)::BIGINT AS distinct_pids,
+                MAX(observed_at) AS last_seen
+            FROM symbol_observations
+            GROUP BY cve_symbol_id
+        ) sa ON sa.cve_symbol_id = cs.id
+        ORDER BY cs.validated DESC, sa.total_calls DESC NULLS LAST
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .map(|rows| {
+        rows.into_iter()
+            .map(|row| {
+                let id = row.base.id;
+                let symbol = row.base.into_symbol();
+                (
+                    id,
+                    symbol,
+                    row.total_calls,
+                    row.distinct_pids,
+                    row.last_seen,
+                )
+            })
+            .collect()
+    })
+}
