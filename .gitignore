@@ -1,243 +1,39 @@
-# Lizt - CVE Vulnerability Scanner
-# .gitignore
+# Build artifacts
+target/
 
-# ============================================================================
-# CVE Data - External Repository (cloned separately)
-# ============================================================================
+# CVE data (cloned separately)
 data/cvelistV5/
 *.cve.json
 
-# ============================================================================
-# Database Files
-# ============================================================================
+# Database files
 *.db
-*.sqlite
-*.sqlite3
-cve_database.db
+*.sqlite*
 *.db-journal
 *.db-shm
 *.db-wal
 
-# ============================================================================
-# Python
-# ============================================================================
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# poetry
-poetry.lock
-
-# pdm
-.pdm.toml
-
-# PEP 582
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
+# Environment / secrets
 .env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+.env.local
+secrets.json
+api-key.txt
+monitor/conf/env
 
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# ============================================================================
-# IDEs and Editors
-# ============================================================================
-# VSCode
+# Editors
 .vscode/
-*.code-workspace
-
-# PyCharm
 .idea/
-*.iml
-*.iws
-*.ipr
-
-# Vim
 *.swp
 *.swo
 *~
-.vim/
-
-# Emacs
 \#*\#
 .\#*
 
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# ============================================================================
-# Operating System
-# ============================================================================
-# macOS
+# OS
 .DS_Store
-.AppleDouble
-.LSOverride
 ._*
-
-# Linux
-.directory
+Thumbs.db
 .Trash-*
 
-# Windows
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-*.stackdump
-[Dd]esktop.ini
-$RECYCLE.BIN/
-*.lnk
-
-# ============================================================================
-# Project Specific
-# ============================================================================
-# Temporary files
-*.tmp
-*.temp
-*.bak
-*.backup
-
 # Logs
+*.log
 logs/
-
-# Local configuration
-config.local.json
-secrets.json
-.env.local
-monitor/conf/env
-
-# Output/Reports
-output/
-reports/
-results/
-
-# Cache
-.cache/
-cache/
-
-api-key.txt
-
-python/
-misc/
-copy_*.sh
-exclude.txt
