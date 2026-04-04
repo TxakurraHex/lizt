@@ -11,14 +11,16 @@ RestartSec=5
 
 User=lizt
 Group=lizt
-AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE
-CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE
+AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_SYS_ADMIN CAP_SYS_RESOURCE
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_SYS_ADMIN CAP_SYS_RESOURCE
 
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/var/log/lizt
 ReadWritePaths=/sys/fs/bpf
-ReadOnlyPaths=/sys/kernel/debug
+ReadWritePaths=/sys/kernel/debug/tracing
+ReadWritePaths=/proc/sys/kernel
+ReadOnlyPaths=/usr /lib /opt
 
 [Install]
 WantedBy=multi-user.target
