@@ -1,6 +1,6 @@
 [build]
 target = "bpfel-unknown-none"
-target-dir = "../../target-bpf"
+target-dir = "../target-bpf"
 rustflags = ["-C", "panic=abort"]
 
 [unstable]

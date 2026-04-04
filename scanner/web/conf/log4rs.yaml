@@ -6,7 +6,7 @@ appenders:
       pattern: "{h({d(%Y-%m-%d %H:%M:%S %Z)(utc)} [{l}] {t} - {m})}{n}"
   rolling_file:
     kind: rolling_file
-    path: /var/log/lizt/web.log
+    path: /var/log/lizt/lizt.log
     encoder:
       pattern: "{h({d(%Y-%m-%d %H:%M:%S %Z)(utc)} [{l}] {t} - {m})}{n}"
     policy:
@@ -16,7 +16,7 @@ appenders:
         interval: 1 day
       roller:
         kind: fixed_window
-        pattern: /var/log/lizt/web.{}.log.gz
+        pattern: /var/log/lizt/lizt.{}.log.gz
         base: 1
         count: 8
 
@@ -58,6 +58,12 @@ loggers:
       - console
       - rolling_file
   db:
+    level: debug
+    additive: false
+    appenders:
+      - console
+      - rolling_file
+  monitor:
     level: debug
     additive: false
     appenders:

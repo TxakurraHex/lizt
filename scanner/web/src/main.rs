@@ -25,12 +25,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (scan_tx, _) = broadcast::channel(32);
 
     let state = AppState {
-        pool,
+        pool: pool.clone(),
         client,
         scan_tx,
         scan_running: Arc::new(Mutex::new(false)),
         scan_stage: Arc::new(Mutex::new(None)),
     };
+
+    // Spawn the eBPF monitor in the background. It reloads probes
+    // automatically whenever a scan completes.
+    let monitor_rx = state.scan_tx.subscribe();
+    tokio::spawn(async move {
+        monitor::spawn_monitor(pool, monitor_rx).await;
+    });
+
     let cors = CorsLayer::new().allow_origin(Any);
 
     let app = Router::new()

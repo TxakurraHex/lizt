@@ -23,5 +23,6 @@ uuid = { workspace = true }
 rust_decimal = { workspace = true }
 log = { workspace = true }
 log4rs = { workspace = true }
+monitor = { workspace = true }
 futures = { workspace = true }
 sqlx = { workspace = true }

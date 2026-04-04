@@ -1,7 +1,6 @@
 [Unit]
-Description=lizt Web Dashboard
+Description=lizt Dashboard + eBPF Monitor
 After=network.target postgresql.service
-Wants=lizt_monitord.service
 
 [Service]
 Type=simple
@@ -12,11 +11,14 @@ RestartSec=5
 
 User=lizt
 Group=lizt
+AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE
 
-NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/var/log/lizt
+ReadWritePaths=/sys/fs/bpf
+ReadOnlyPaths=/sys/kernel/debug
 
 [Install]
 WantedBy=multi-user.target

@@ -4,7 +4,7 @@ use std::process::Command;
 
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let bpf_manifest = manifest_dir.join("../ebpf_programs/Cargo.toml");
+    let bpf_manifest = manifest_dir.join("ebpf_programs/Cargo.toml");
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let target_dir = out_dir.join("bpf-build");
 
@@ -42,6 +42,6 @@ fn main() {
     let dst = out_dir.join("ebpf_programs");
     std::fs::copy(&src, &dst).expect("failed to copy BPF binary to OUT_DIR");
 
-    println!("cargo:rerun-if-changed=../ebpf_programs/src");
-    println!("cargo:rerun-if-changed=../ebpf_programs/Cargo.toml");
+    println!("cargo:rerun-if-changed=ebpf_programs/src");
+    println!("cargo:rerun-if-changed=ebpf_programs/Cargo.toml");
 }
