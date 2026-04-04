@@ -92,7 +92,15 @@ pub async fn get_symbol_observations(pool: &PgPool) -> Result<Vec<SymbolObservat
                 WHERE so.cve_symbol_id = cs.id AND so.process_name IS NOT NULL
             ) AS recent_processes
         FROM cve_symbols cs
-        JOIN symbol_activity sa ON sa.cve_symbol_id = cs.id
+        JOIN (
+            SELECT
+                cve_symbol_id,
+                SUM(call_count)::BIGINT AS total_calls,
+                COUNT(DISTINCT pid)::BIGINT AS distinct_pids,
+                MAX(observed_at) AS last_seen
+            FROM symbol_observations
+            GROUP BY cve_symbol_id
+        ) sa ON sa.cve_symbol_id = cs.id
         ORDER BY sa.total_calls DESC
         LIMIT 200
         "#,
@@ -123,7 +131,15 @@ pub async fn get_symbols_for_cve_with_activity(
             sa.distinct_pids,
             sa.last_seen
         FROM cve_symbols as cs
-        LEFT JOIN symbol_activity sa ON sa.cve_symbol_id = cs.id
+        LEFT JOIN (
+            SELECT
+                cve_symbol_id,
+                SUM(call_count)::BIGINT AS total_calls,
+                COUNT(DISTINCT pid)::BIGINT AS distinct_pids,
+                MAX(observed_at) AS last_seen
+            FROM symbol_observations
+            GROUP BY cve_symbol_id
+        ) sa ON sa.cve_symbol_id = cs.id
         WHERE cs.cve_id = $1
         ORDER BY sa.total_calls DESC NULLS LAST
         "#,
