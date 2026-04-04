@@ -23,8 +23,12 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; }
 
-  /* ── Layout ── */
-  #app { display: flex; flex-direction: column; min-height: 100vh; }
+        /* ── Layout ── */
+        #app {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
 
   header {
     background: var(--surface);
@@ -46,32 +50,74 @@
   nav button:hover  { background: rgba(201,168,0,.08); color: var(--text); }
   nav button.active { background: rgba(201,168,0,.15); color: var(--accent); font-weight: 600; }
 
-  #refresh-btn {
-    margin-left: auto; background: none; border: 1px solid var(--border);
-    color: var(--muted); cursor: pointer; padding: 5px 14px; border-radius: var(--radius);
-    font-size: 12px; font-family: var(--font); transition: border-color .15s, color .15s;
-  }
-  #refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+        #refresh-btn {
+            margin-left: auto;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            cursor: pointer;
+            padding: 5px 14px;
+            border-radius: var(--radius);
+            font-size: 12px;
+            font-family: var(--font);
+            transition: border-color .15s, color .15s;
+        }
 
-  main { flex: 1; padding: 24px; max-width: 1400px; margin: 0 auto; width: 100%; }
+        #refresh-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
 
-  /* ── Cards ── */
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
-  }
+        main {
+            flex: 1;
+            padding: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
 
-  /* ── Tables ── */
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; }
-  th {
-    text-align: left; padding: 8px 12px; font-size: 11px;
-    text-transform: uppercase; letter-spacing: .7px;
-    color: var(--muted); border-bottom: 1px solid var(--border);
-  }
-  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(255,255,255,.02); }
+        /* ── Cards ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        /* ── Tables ── */
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 8px 12px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .7px;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, .02);
+        }
 
   /* ── Badges ── */
   .badge {
@@ -87,93 +133,286 @@
   .badge-kev      { background: rgba(248,81,73,.2);   color: #f85149; border: 1px solid rgba(248,81,73,.4); }
   .badge-green    { background: rgba(63,185,80,.15);  color: #3fb950; }
 
-  /* ── Score bar ── */
-  .score-bar { display: flex; align-items: center; gap: 8px; }
-  .score-bar .val { min-width: 36px; }
-  .bar-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; min-width: 60px; }
-  .bar-fill  { height: 100%; border-radius: 2px; }
+        /* ── Score bar ── */
+        .score-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-  /* ── CVE link ── */
-  .cve-link { color: var(--accent); cursor: pointer; text-decoration: none; font-family: monospace; font-size: 12px; }
-  .cve-link:hover { text-decoration: underline; }
+        .score-bar .val {
+            min-width: 36px;
+        }
 
-  /* ── Detail slide-over ── */
-  #detail-panel {
-    position: fixed; top: 52px; right: 0; bottom: 0; width: 420px;
-    background: var(--surface); border-left: 1px solid var(--border);
-    padding: 24px; overflow-y: auto; z-index: 20;
-    transform: translateX(100%); transition: transform .2s ease;
-  }
-  #detail-panel.open { transform: translateX(0); }
-  #detail-panel .close-btn {
-    position: absolute; top: 16px; right: 16px;
-    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px;
-  }
-  #detail-panel h3 { font-size: 15px; margin-bottom: 12px; color: var(--accent); }
-  #detail-panel p  { color: var(--muted); line-height: 1.6; margin-bottom: 16px; font-size: 13px; }
-  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  .meta-item label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 3px; }
-  .meta-item span  { font-weight: 600; }
+        .bar-track {
+            flex: 1;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            min-width: 60px;
+        }
 
-  /* ── Symbol rows in detail ── */
-  .sym-row { display: flex; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .sym-row .sym-name  { font-family: monospace; color: var(--text); flex: 1; word-break: break-all; }
-  .sym-row .sym-calls { color: var(--purple); font-size: 12px; white-space: nowrap; }
+        .bar-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
 
-  /* ── Loading / empty ── */
-  .state-msg { color: var(--muted); padding: 40px 0; text-align: center; }
+        /* ── CVE link ── */
+        .cve-link {
+            color: var(--accent);
+            cursor: pointer;
+            text-decoration: none;
+            font-family: monospace;
+            font-size: 12px;
+        }
 
-  /* ── Stat strip ── */
-  .stat-strip { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
-  .stat-box {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 14px 20px; flex: 1; min-width: 140px;
-  }
-  .stat-box .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 4px; }
-  .stat-box .value { font-size: 24px; font-weight: 700; }
-  .stat-box .value.red    { color: var(--red); }
-  .stat-box .value.orange { color: var(--orange); }
-  .stat-box .value.purple { color: var(--purple); }
-  .stat-box .value.green  { color: var(--green); }
+        .cve-link:hover {
+            text-decoration: underline;
+        }
 
-  /* ── Search box ── */
-  .search-row { display: flex; gap: 10px; margin-bottom: 16px; }
-  .search-row input {
-    flex: 1; background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius); color: var(--text); padding: 7px 12px;
-    font-family: var(--font); font-size: 13px;
-  }
-  .search-row input:focus { outline: none; border-color: var(--accent); }
+        /* ── Detail slide-over ── */
+        #detail-panel {
+            position: fixed;
+            top: 52px;
+            right: 0;
+            bottom: 0;
+            width: 420px;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            padding: 24px;
+            overflow-y: auto;
+            z-index: 20;
+            transform: translateX(100%);
+            transition: transform .2s ease;
+        }
 
-  /* ── Scan tab ── */
-  .scan-btn {
-    background: var(--accent); color: #fff; border: none;
-    border-radius: var(--radius); padding: 8px 20px;
-    font-size: 13px; font-weight: 600; cursor: pointer;
-    transition: opacity .15s;
-  }
-  .scan-btn:disabled { opacity: .4; cursor: not-allowed; }
-  .scan-btn:not(:disabled):hover { opacity: .85; }
+        #detail-panel.open {
+            transform: translateX(0);
+        }
 
-  .stage-bar { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
-  .stage-step { flex: 1; min-width: 0; }
-  .stage-step .track {
-    height: 4px; border-radius: 2px; margin-bottom: 6px;
-    background: var(--border); transition: background .3s;
-  }
-  .stage-step.done   .track { background: var(--green); }
-  .stage-step.active .track { background: var(--accent); }
-  .stage-step.failed .track { background: var(--red); }
-  .stage-step .label {
-    font-size: 11px; color: var(--muted); white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis;
-    transition: color .3s;
-  }
-  .stage-step.done   .label { color: var(--text); }
-  .stage-step.active .label { color: var(--accent); }
-  .stage-step.failed .label { color: var(--red); }
-  .stage-detail { font-size: 12px; color: var(--muted); min-height: 18px; }
-</style>
+        #detail-panel .close-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        #detail-panel h3 {
+            font-size: 15px;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+
+        #detail-panel p {
+            color: var(--muted);
+            line-height: 1.6;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .meta-item label {
+            display: block;
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .7px;
+            margin-bottom: 3px;
+        }
+
+        .meta-item span {
+            font-weight: 600;
+        }
+
+        /* ── Symbol rows in detail ── */
+        .sym-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sym-row .sym-name {
+            font-family: monospace;
+            color: var(--text);
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .sym-row .sym-calls {
+            color: var(--purple);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        /* ── Loading / empty ── */
+        .state-msg {
+            color: var(--muted);
+            padding: 40px 0;
+            text-align: center;
+        }
+
+        /* ── Stat strip ── */
+        .stat-strip {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 20px;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .stat-box .label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .7px;
+            margin-bottom: 4px;
+        }
+
+        .stat-box .value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .stat-box .value.red {
+            color: var(--red);
+        }
+
+        .stat-box .value.orange {
+            color: var(--orange);
+        }
+
+        .stat-box .value.purple {
+            color: var(--purple);
+        }
+
+        .stat-box .value.green {
+            color: var(--green);
+        }
+
+        /* ── Search box ── */
+        .search-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .search-row input {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            padding: 7px 12px;
+            font-family: var(--font);
+            font-size: 13px;
+        }
+
+        .search-row input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* ── Scan tab ── */
+        .scan-btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius);
+            padding: 8px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .15s;
+        }
+
+        .scan-btn:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        .scan-btn:not(:disabled):hover {
+            opacity: .85;
+        }
+
+        .stage-bar {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .stage-step {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .stage-step .track {
+            height: 4px;
+            border-radius: 2px;
+            margin-bottom: 6px;
+            background: var(--border);
+            transition: background .3s;
+        }
+
+        .stage-step.done .track {
+            background: var(--green);
+        }
+
+        .stage-step.active .track {
+            background: var(--accent);
+        }
+
+        .stage-step.failed .track {
+            background: var(--red);
+        }
+
+        .stage-step .label {
+            font-size: 11px;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: color .3s;
+        }
+
+        .stage-step.done .label {
+            color: var(--text);
+        }
+
+        .stage-step.active .label {
+            color: var(--accent);
+        }
+
+        .stage-step.failed .label {
+            color: var(--red);
+        }
+
+        .stage-detail {
+            font-size: 12px;
+            color: var(--muted);
+            min-height: 18px;
+        }
+    </style>
 </head>
 <body>
 <div id="app">
@@ -210,133 +449,133 @@
 
 <!-- CVE Detail Slide-over -->
 <div id="detail-panel">
-  <button class="close-btn" onclick="closeDetail()">✕</button>
-  <div id="detail-body"></div>
+    <button class="close-btn" onclick="closeDetail()">✕</button>
+    <div id="detail-body"></div>
 </div>
 
 <script>
-// ─────────────────────────────────────────────
-// State
-// ─────────────────────────────────────────────
-let currentTab = 'findings';
-let cache = {};
-let scanEvtSource = null; // active EventSource, if any
+    // ─────────────────────────────────────────────
+    // State
+    // ─────────────────────────────────────────────
+    let currentTab = 'findings';
+    let cache = {};
+    let scanEvtSource = null; // active EventSource, if any
 
-// ─────────────────────────────────────────────
-// Routing
-// ─────────────────────────────────────────────
-function switchTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll('nav button').forEach((b, i) => {
-    const tabs = ['findings', 'observations', 'inventory', 'scan'];
-    b.classList.toggle('active', tabs[i] === tab);
-  });
-  cache = {};
-  // Leave the SSE connection open when switching away from Scan —
-  // it will close itself on Complete/Failed.
-  reload();
-}
+    // ─────────────────────────────────────────────
+    // Routing
+    // ─────────────────────────────────────────────
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('nav button').forEach((b, i) => {
+            const tabs = ['findings', 'observations', 'inventory', 'scan'];
+            b.classList.toggle('active', tabs[i] === tab);
+        });
+        cache = {};
+        // Leave the SSE connection open when switching away from Scan —
+        // it will close itself on Complete/Failed.
+        reload();
+    }
 
-function reload() {
-  const main = document.getElementById('main-content');
-  main.innerHTML = '<div class="state-msg">Loading…</div>';
-  if (currentTab === 'findings')     renderFindings();
-  if (currentTab === 'observations') renderObservations();
-  if (currentTab === 'inventory')    renderInventory();
-  if (currentTab === 'scan')         renderScan();
-}
+    function reload() {
+        const main = document.getElementById('main-content');
+        main.innerHTML = '<div class="state-msg">Loading...</div>';
+        if (currentTab === 'findings') renderFindings();
+        if (currentTab === 'observations') renderObservations();
+        if (currentTab === 'inventory') renderInventory();
+        if (currentTab === 'scan') renderScan();
+    }
 
-// ─────────────────────────────────────────────
-// Fetch helpers
-// ─────────────────────────────────────────────
-async function fetchJSON(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
-}
+    // ─────────────────────────────────────────────
+    // Fetch helpers
+    // ─────────────────────────────────────────────
+    async function fetchJSON(url) {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        return res.json();
+    }
 
-function err(msg) {
-  document.getElementById('main-content').innerHTML =
-    `<div class="state-msg" style="color:var(--red)">Error: ${msg}</div>`;
-}
+    function err(msg) {
+        document.getElementById('main-content').innerHTML =
+            `<div class="state-msg" style="color:var(--red)">Error: ${msg}</div>`;
+    }
 
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
-function cvssColor(score) {
-  if (score == null) return 'none';
-  if (score >= 9.0) return 'critical';
-  if (score >= 7.0) return 'high';
-  if (score >= 4.0) return 'medium';
-  return 'low';
-}
+    // ─────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────
+    function cvssColor(score) {
+        if (score == null) return 'none';
+        if (score >= 9.0) return 'critical';
+        if (score >= 7.0) return 'high';
+        if (score >= 4.0) return 'medium';
+        return 'low';
+    }
 
-function cvssBarColor(score) {
-  if (score == null) return 'var(--muted)';
-  if (score >= 9.0) return 'var(--red)';
-  if (score >= 7.0) return 'var(--orange)';
-  if (score >= 4.0) return 'var(--accent)';
-  return 'var(--green)';
-}
+    function cvssBarColor(score) {
+        if (score == null) return 'var(--muted)';
+        if (score >= 9.0) return 'var(--red)';
+        if (score >= 7.0) return 'var(--orange)';
+        if (score >= 4.0) return 'var(--accent)';
+        return 'var(--green)';
+    }
 
-function scoreBar(score) {
-  if (score == null) return '<span style="color:var(--muted)">—</span>';
-  const pct = Math.round((score / 10) * 100);
-  return `<div class="score-bar">
+    function scoreBar(score) {
+        if (score == null) return '<span style="color:var(--muted)">—</span>';
+        const pct = Math.round((score / 10) * 100);
+        return `<div class="score-bar">
     <span class="val badge badge-${cvssColor(score)}">${score}</span>
     <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${cvssBarColor(score)}"></div></div>
   </div>`;
-}
+    }
 
-function rankBadge(r) {
-  if (r == null) return '<span class="badge badge-none">unranked</span>';
-  const v = parseFloat(r).toFixed(1);
-  if (r >= 8) return `<span class="badge badge-critical">${v}</span>`;
-  if (r >= 5) return `<span class="badge badge-high">${v}</span>`;
-  if (r >= 2) return `<span class="badge badge-medium">${v}</span>`;
-  return `<span class="badge badge-low">${v}</span>`;
-}
+    function rankBadge(r) {
+        if (r == null) return '<span class="badge badge-none">unranked</span>';
+        const v = parseFloat(r).toFixed(1);
+        if (r >= 8) return `<span class="badge badge-critical">${v}</span>`;
+        if (r >= 5) return `<span class="badge badge-high">${v}</span>`;
+        if (r >= 2) return `<span class="badge badge-medium">${v}</span>`;
+        return `<span class="badge badge-low">${v}</span>`;
+    }
 
-function symbolBadge(called, present) {
-  if (called)  return '<span class="badge badge-called">called</span>';
-  if (present) return '<span class="badge badge-medium">present</span>';
-  return '<span class="badge badge-none">none</span>';
-}
+    function symbolBadge(called, present) {
+        if (called) return '<span class="badge badge-called">called</span>';
+        if (present) return '<span class="badge badge-medium">present</span>';
+        return '<span class="badge badge-none">none</span>';
+    }
 
-function fmtDate(ts) {
-  if (!ts) return '—';
-  return new Date(ts).toLocaleString();
-}
+    function fmtDate(ts) {
+        if (!ts) return '—';
+        return new Date(ts).toLocaleString();
+    }
 
-function fmtDuration(startedAt, finishedAt) {
-  if (!finishedAt) return '—';
-  const ms = new Date(finishedAt) - new Date(startedAt);
-  const s  = Math.floor(ms / 1000);
-  if (s < 60)   return `${s}s`;
-  const m = Math.floor(s / 60);
-  return `${m}m ${s % 60}s`;
-}
+    function fmtDuration(startedAt, finishedAt) {
+        if (!finishedAt) return '—';
+        const ms = new Date(finishedAt) - new Date(startedAt);
+        const s = Math.floor(ms / 1000);
+        if (s < 60) return `${s}s`;
+        const m = Math.floor(s / 60);
+        return `${m}m ${s % 60}s`;
+    }
 
-function filterRows(rows, query, fields) {
-  if (!query) return rows;
-  const q = query.toLowerCase();
-  return rows.filter(r => fields.some(f => (r[f] || '').toLowerCase().includes(q)));
-}
+    function filterRows(rows, query, fields) {
+        if (!query) return rows;
+        const q = query.toLowerCase();
+        return rows.filter(r => fields.some(f => (r[f] || '').toLowerCase().includes(q)));
+    }
 
-// ─────────────────────────────────────────────
-// Findings tab
-// ─────────────────────────────────────────────
-async function renderFindings() {
-  try {
-    const data = await fetchJSON('/api/findings');
-    cache.findings = data;
+    // ─────────────────────────────────────────────
+    // Findings tab
+    // ─────────────────────────────────────────────
+    async function renderFindings() {
+        try {
+            const data = await fetchJSON('/api/findings');
+            cache.findings = data;
 
-    const critical = data.filter(r => r.cvss_score >= 9).length;
-    const high     = data.filter(r => r.cvss_score >= 7 && r.cvss_score < 9).length;
-    const kev      = data.filter(r => r.kev_listed).length;
-    const called   = data.filter(r => r.symbol_called).length;
+            const critical = data.filter(r => r.cvss_score >= 9).length;
+            const high = data.filter(r => r.cvss_score >= 7 && r.cvss_score < 9).length;
+            const kev = data.filter(r => r.kev_listed).length;
+            const called = data.filter(r => r.symbol_called).length;
 
-    document.getElementById('main-content').innerHTML = `
+            document.getElementById('main-content').innerHTML = `
       <div class="stat-strip">
         <div class="stat-box"><div class="label">Total Findings</div><div class="value">${data.length}</div></div>
         <div class="stat-box"><div class="label">Critical (9+)</div><div class="value red">${critical}</div></div>
@@ -346,7 +585,7 @@ async function renderFindings() {
       </div>
       <div class="card">
         <div class="search-row">
-          <input id="findings-search" type="text" placeholder="Filter by CVE, package…" oninput="applyFindingsFilter()" />
+          <input id="findings-search" type="text" placeholder="Filter by CVE, package..." oninput="applyFindingsFilter()" />
         </div>
         <div class="table-wrap">
           <table id="findings-table">
@@ -361,16 +600,18 @@ async function renderFindings() {
         </div>
       </div>
     `;
-    applyFindingsFilter();
-  } catch(e) { err(e.message); }
-}
+            applyFindingsFilter();
+        } catch (e) {
+            err(e.message);
+        }
+    }
 
-function applyFindingsFilter() {
-  const q    = (document.getElementById('findings-search')?.value || '').toLowerCase();
-  const rows = filterRows(cache.findings || [], q, ['cve_id', 'cpe_name', 'cpe_product']);
-  const tbody = document.getElementById('findings-body');
-  if (!tbody) return;
-  tbody.innerHTML = rows.map(r => `
+    function applyFindingsFilter() {
+        const q = (document.getElementById('findings-search')?.value || '').toLowerCase();
+        const rows = filterRows(cache.findings || [], q, ['cve_id', 'cpe_name', 'cpe_product']);
+        const tbody = document.getElementById('findings-body');
+        if (!tbody) return;
+        tbody.innerHTML = rows.map(r => `
     <tr>
       <td>${rankBadge(r.rank_score)}</td>
       <td><a class="cve-link" onclick="openDetail('${r.cve_id}')">${r.cve_id}</a></td>
@@ -381,30 +622,30 @@ function applyFindingsFilter() {
       <td style="color:var(--muted);font-size:12px">${r.cvss_version || '—'}</td>
     </tr>
   `).join('');
-  if (!rows.length) tbody.innerHTML = '<tr><td colspan="7" class="state-msg">No results</td></tr>';
-}
+        if (!rows.length) tbody.innerHTML = '<tr><td colspan="7" class="state-msg">No results</td></tr>';
+    }
 
-// ─────────────────────────────────────────────
-// CVE detail slide-over
-// ─────────────────────────────────────────────
-async function openDetail(cveId) {
-  document.getElementById('detail-panel').classList.add('open');
-  document.getElementById('detail-body').innerHTML = '<div class="state-msg">Loading…</div>';
-  try {
-    const d    = await fetchJSON(`/api/cve/${encodeURIComponent(cveId)}`);
-    const cv   = d.cve;
-    const syms = d.symbols;
+    // ─────────────────────────────────────────────
+    // CVE detail slide-over
+    // ─────────────────────────────────────────────
+    async function openDetail(cveId) {
+        document.getElementById('detail-panel').classList.add('open');
+        document.getElementById('detail-body').innerHTML = '<div class="state-msg">Loading...</div>';
+        try {
+            const d = await fetchJSON(`/api/cve/${encodeURIComponent(cveId)}`);
+            const cv = d.cve;
+            const syms = d.symbols;
 
-    const symHtml = syms.length
-      ? syms.map(s => `
+            const symHtml = syms.length
+                ? syms.map(s => `
           <div class="sym-row">
             <span class="sym-name">${s.name}</span>
             <span class="badge badge-${s.confidence === 'high' ? 'green' : s.confidence === 'medium' ? 'medium' : 'none'}">${s.confidence}</span>
             <span class="sym-calls">${s.total_calls != null ? s.total_calls + ' calls' : ''}</span>
           </div>`).join('')
-      : '<div style="color:var(--muted);font-size:13px">No symbols extracted.</div>';
+                : '<div style="color:var(--muted);font-size:13px">No symbols extracted.</div>';
 
-    document.getElementById('detail-body').innerHTML = `
+            document.getElementById('detail-body').innerHTML = `
       <h3>${cv.cve_id}</h3>
       <p>${cv.description || 'No description available.'}</p>
       <div class="meta-grid">
@@ -424,39 +665,39 @@ async function openDetail(cveId) {
            style="color:var(--accent);font-size:12px">View on NVD ↗</a>
       </div>
     `;
-  } catch(e) {
-    document.getElementById('detail-body').innerHTML =
-      `<div class="state-msg" style="color:var(--red)">Error: ${e.message}</div>`;
-  }
-}
-
-function closeDetail() {
-  document.getElementById('detail-panel').classList.remove('open');
-}
-
-// ─────────────────────────────────────────────
-// eBPF Observations tab
-// ─────────────────────────────────────────────
-async function renderObservations() {
-  try {
-    const data = await fetchJSON('/api/observation');
-
-    if (!data.length) {
-      document.getElementById('main-content').innerHTML =
-        '<div class="state-msg">No runtime observations yet — is <code>lizt_monitord</code> running?</div>';
-      return;
+        } catch (e) {
+            document.getElementById('detail-body').innerHTML =
+                `<div class="state-msg" style="color:var(--red)">Error: ${e.message}</div>`;
+        }
     }
 
-    const totalCalls = data.reduce((s, r) => s + (r.total_calls || 0), 0);
+    function closeDetail() {
+        document.getElementById('detail-panel').classList.remove('open');
+    }
 
-    document.getElementById('main-content').innerHTML = `
+    // ─────────────────────────────────────────────
+    // eBPF Observations tab
+    // ─────────────────────────────────────────────
+    async function renderObservations() {
+        try {
+            const data = await fetchJSON('/api/observation');
+
+            if (!data.length) {
+                document.getElementById('main-content').innerHTML =
+                    '<div class="state-msg">No runtime observations yet — is <code>lizt_monitord</code> running?</div>';
+                return;
+            }
+
+            const totalCalls = data.reduce((s, r) => s + (r.total_calls || 0), 0);
+
+            document.getElementById('main-content').innerHTML = `
       <div class="stat-strip">
         <div class="stat-box"><div class="label">Active Symbols</div><div class="value purple">${data.length}</div></div>
         <div class="stat-box"><div class="label">Total Calls</div><div class="value">${totalCalls.toLocaleString()}</div></div>
       </div>
       <div class="card">
         <div class="search-row">
-          <input id="obs-search" type="text" placeholder="Filter by symbol, CVE…" oninput="applyObsFilter()" />
+          <input id="obs-search" type="text" placeholder="Filter by symbol, CVE..." oninput="applyObsFilter()" />
         </div>
         <div class="table-wrap">
           <table id="obs-table">
@@ -471,17 +712,19 @@ async function renderObservations() {
         </div>
       </div>
     `;
-    cache.observations = data;
-    applyObsFilter();
-  } catch(e) { err(e.message); }
-}
+            cache.observations = data;
+            applyObsFilter();
+        } catch (e) {
+            err(e.message);
+        }
+    }
 
-function applyObsFilter() {
-  const q    = (document.getElementById('obs-search')?.value || '').toLowerCase();
-  const rows = filterRows(cache.observations || [], q, ['symbol_name', 'cve_id', 'recent_processes']);
-  const tbody = document.getElementById('obs-body');
-  if (!tbody) return;
-  tbody.innerHTML = rows.map(r => `
+    function applyObsFilter() {
+        const q = (document.getElementById('obs-search')?.value || '').toLowerCase();
+        const rows = filterRows(cache.observations || [], q, ['symbol_name', 'cve_id', 'recent_processes']);
+        const tbody = document.getElementById('obs-body');
+        if (!tbody) return;
+        tbody.innerHTML = rows.map(r => `
     <tr>
       <td style="font-family:monospace">${r.symbol_name}</td>
       <td><a class="cve-link" onclick="openDetail('${r.cve_id}')">${r.cve_id}</a></td>
@@ -491,25 +734,25 @@ function applyObsFilter() {
       <td style="color:var(--muted);font-size:12px">${fmtDate(r.last_seen)}</td>
     </tr>
   `).join('');
-  if (!rows.length) tbody.innerHTML = '<tr><td colspan="6" class="state-msg">No results</td></tr>';
-}
+        if (!rows.length) tbody.innerHTML = '<tr><td colspan="6" class="state-msg">No results</td></tr>';
+    }
 
-// ─────────────────────────────────────────────
-// Inventory tab
-// ─────────────────────────────────────────────
-async function renderInventory() {
-  try {
-    const data = await fetchJSON('/api/inventory');
+    // ─────────────────────────────────────────────
+    // Inventory tab
+    // ─────────────────────────────────────────────
+    async function renderInventory() {
+        try {
+            const data = await fetchJSON('/api/inventory');
 
-    document.getElementById('main-content').innerHTML = `
+            document.getElementById('main-content').innerHTML = `
       <div class="stat-strip">
         <div class="stat-box"><div class="label">Tracked Packages</div><div class="value">${data.length}</div></div>
-        <div class="stat-box"><div class="label">With CPE</div><div class="value green">${data.filter(r=>r.cpe).length}</div></div>
-        <div class="stat-box"><div class="label">CVE Exposures</div><div class="value orange">${data.reduce((s,r)=>s+(r.cve_count||0),0)}</div></div>
+        <div class="stat-box"><div class="label">With CPE</div><div class="value green">${data.filter(r => r.cpe).length}</div></div>
+        <div class="stat-box"><div class="label">CVE Exposures</div><div class="value orange">${data.reduce((s, r) => s + (r.cve_count || 0), 0)}</div></div>
       </div>
       <div class="card">
         <div class="search-row">
-          <input id="inv-search" type="text" placeholder="Filter by package name, vendor…" oninput="applyInvFilter()" />
+          <input id="inv-search" type="text" placeholder="Filter by package name, vendor..." oninput="applyInvFilter()" />
         </div>
         <div class="table-wrap">
           <table id="inv-table">
@@ -524,20 +767,22 @@ async function renderInventory() {
         </div>
       </div>
     `;
-    cache.inventory = data;
-    applyInvFilter();
-  } catch(e) { err(e.message); }
-}
+            cache.inventory = data;
+            applyInvFilter();
+        } catch (e) {
+            err(e.message);
+        }
+    }
 
-function applyInvFilter() {
-  const q    = (document.getElementById('inv-search')?.value || '').toLowerCase();
-  const rows = filterRows(cache.inventory || [], q, ['name', 'product', 'vendor', 'cpe']);
-  const tbody = document.getElementById('inv-body');
-  if (!tbody) return;
-  tbody.innerHTML = rows.map(r => {
-    const conf      = r.cpe_confidence;
-    const confClass = conf === 'high' ? 'green' : conf === 'medium' ? 'medium' : 'none';
-    return `
+    function applyInvFilter() {
+        const q = (document.getElementById('inv-search')?.value || '').toLowerCase();
+        const rows = filterRows(cache.inventory || [], q, ['name', 'product', 'vendor', 'cpe']);
+        const tbody = document.getElementById('inv-body');
+        if (!tbody) return;
+        tbody.innerHTML = rows.map(r => {
+            const conf = r.cpe_confidence;
+            const confClass = conf === 'high' ? 'green' : conf === 'medium' ? 'medium' : 'none';
+            return `
     <tr>
       <td><span style="font-weight:600">${r.product}</span><br>
           <span style="color:var(--muted);font-size:11px">${r.name}</span></td>
@@ -549,26 +794,26 @@ function applyInvFilter() {
       <td>${r.cve_count ? `<span class="badge badge-${r.cve_count > 5 ? 'high' : 'medium'}">${r.cve_count}</span>` : '—'}</td>
       <td style="color:var(--muted);font-size:11px">${fmtDate(r.last_seen)}</td>
     </tr>`;
-  }).join('');
-  if (!rows.length) tbody.innerHTML = '<tr><td colspan="8" class="state-msg">No results</td></tr>';
-}
+        }).join('');
+        if (!rows.length) tbody.innerHTML = '<tr><td colspan="8" class="state-msg">No results</td></tr>';
+    }
 
-// ─────────────────────────────────────────────
-// Scan tab
-// ─────────────────────────────────────────────
-const SCAN_STAGES = [
-  { key: 'inventory',         label: '1 · Inventory' },
-  { key: 'cpe_resolution',    label: '2 · CPE resolution' },
-  { key: 'cve_lookup',        label: '3 · CVE lookup' },
-  { key: 'symbol_extraction', label: '4 · Symbol extraction' },
-  { key: 'persisting',        label: '5 · Persisting' },
-];
+    // ─────────────────────────────────────────────
+    // Scan tab
+    // ─────────────────────────────────────────────
+    const SCAN_STAGES = [
+        {key: 'inventory', label: '1 · Inventory'},
+        {key: 'cpe_resolution', label: '2 · CPE resolution'},
+        {key: 'cve_lookup', label: '3 · CVE lookup'},
+        {key: 'symbol_extraction', label: '4 · Symbol extraction'},
+        {key: 'persisting', label: '5 · Persisting'},
+    ];
 
-async function renderScan() {
-  try {
-    const scans = await fetchJSON('/api/scan');
+    async function renderScan() {
+        try {
+            const scans = await fetchJSON('/api/scan');
 
-    document.getElementById('main-content').innerHTML = `
+            document.getElementById('main-content').innerHTML = `
       <div class="card" style="margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
           <h2 style="margin:0;font-size:15px;font-weight:700">Run a scan</h2>
@@ -601,120 +846,158 @@ async function renderScan() {
         </div>
       </div>
     `;
-  } catch(e) { err(e.message); }
-}
+            await checkScanStatus();
+        } catch (e) {
+            err(e.message);
+        }
+    }
 
-function scanRow(s) {
-  const statusClass = s.status === 'complete' ? 'low' : s.status === 'failed' ? 'critical' : 'medium';
-  return `<tr>
-    <td style="font-family:monospace;font-size:11px;color:var(--muted)">${s.id.slice(0,8)}…</td>
+    function scanRow(s) {
+        const statusClass = s.status === 'complete' ? 'low' : s.status === 'failed' ? 'critical' : 'medium';
+        return `<tr>
+    <td style="font-family:monospace;font-size:11px;color:var(--muted)">${s.id.slice(0, 8)}...</td>
     <td><span class="badge badge-${statusClass}">${s.status}</span></td>
     <td style="color:var(--muted);font-size:12px">${fmtDate(s.started_at)}</td>
     <td style="color:var(--muted);font-size:12px">${fmtDate(s.finished_at)}</td>
     <td style="font-size:12px">${fmtDuration(s.started_at, s.finished_at)}</td>
   </tr>`;
-}
-
-function startScan() {
-  const btn = document.getElementById('scan-btn');
-  btn.disabled = true;
-  btn.textContent = 'Connecting…';
-
-  // Open SSE first, then start the scan once the connection is live.
-  // This guarantees the server-side broadcast receiver exists before
-  // any pipeline events are emitted.
-  openScanEvents();
-}
-
-function openScanEvents() {
-  // Close any existing connection
-  if (scanEvtSource) { scanEvtSource.close(); scanEvtSource = null; }
-
-  const tracker = document.getElementById('stage-tracker');
-  if (tracker) tracker.style.display = 'block';
-
-  scanEvtSource = new EventSource('/api/scan/events');
-
-  scanEvtSource.onopen = async () => {
-    const btn = document.getElementById('scan-btn');
-    try {
-      btn.textContent = 'Starting…';
-      const res = await fetch('/api/scan', { method: 'POST' });
-      if (!res.ok) {
-        const msg = res.status === 409 ? 'A scan is already running' : await res.text();
-        throw new Error(msg);
-      }
-      btn.textContent = 'Running…';
-    } catch(e) {
-      closeScanEvents();
-      alert(`Failed to start scan: ${e.message}`);
-    }
-  };
-
-  scanEvtSource.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-
-    if (msg.type === 'stage') {
-      setStage(msg.stage, msg.detail);
     }
 
-    if (msg.type === 'complete') {
-      finaliseStages('done');
-      closeScanEvents();
-      // Refresh history table to show the completed scan
-      fetchJSON('/api/scan').then(scans => {
-        const tbody = document.getElementById('scan-history');
-        if (tbody) tbody.innerHTML = scans.map(scanRow).join('');
-      });
+    function startScan() {
+        const btn = document.getElementById('scan-btn');
+        btn.disabled = true;
+        btn.textContent = 'Connecting...';
+
+        const tracker = document.getElementById('stage-tracker');
+        if (tracker) tracker.style.display = 'block';
+
+        connectScanSSE();
+
+        scanEvtSource.onopen = async () => {
+            try {
+                btn.textContent = 'Starting...';
+                const res = await fetch('/api/scan', {method: 'POST'});
+                if (!res.ok) {
+                    const msg = res.status === 409 ? 'A scan is already running' : await res.text();
+                    throw new Error(msg);
+                }
+                btn.textContent = 'Running...';
+            } catch (e) {
+                closeScanEvents();
+                alert(`Failed to start scan: ${e.message}`);
+            }
+        };
     }
 
-    if (msg.type === 'failed') {
-      finaliseStages('failed');
-      closeScanEvents();
-      document.getElementById('stage-detail').textContent = `Error: ${msg.error}`;
+    function connectScanSSE() {
+        if (scanEvtSource) {
+            scanEvtSource.close();
+            scanEvtSource = null;
+        }
+
+        scanEvtSource = new EventSource('/api/scan/events');
+
+        scanEvtSource.onmessage = (e) => {
+            const msg = JSON.parse(e.data);
+
+            if (msg.type === 'stage') {
+                const tracker = document.getElementById('stage-tracker');
+                if (tracker) {
+                    tracker.style.display = 'block';
+                }
+                setStage(msg.stage, msg.detail);
+            }
+
+            if (msg.type === 'complete') {
+                finaliseStages('done');
+                closeScanEvents();
+                fetchJSON('/api/scan').then(scans => {
+                    const tbody = document.getElementById('scan-history');
+                    if (tbody) {
+                        tbody.innerHTML = scans.map(scanRow).join('');
+                    }
+                });
+            }
+
+            if (msg.type === 'failed') {
+                finaliseStages('failed');
+                closeScanEvents();
+                document.getElementById('stage-detail').textContent = `Error: ${msg.error}`;
+            }
+        };
+
+        scanEvtSource.onerror = () => {
+            if (document.getElementById('scan-btn')?.textContent !== 'Running...') {
+                closeScanEvents();
+            }
+        }
     }
-  };
 
-  scanEvtSource.onerror = () => {
-    // Only clean up if the scan isn't actively running
-    if (document.getElementById('scan-btn')?.textContent !== 'Running…') {
-      closeScanEvents();
+    async function checkScanStatus() {
+        try {
+            const status = await fetchJSON('/api/scan/status');
+            if (!status.running) {
+                return;
+            }
+
+            const btn = document.getElementById('scan-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Running...';
+            }
+            const tracker = document.getElementById('stage-tracker');
+            if (tracker) {
+                tracker.style.display = 'block';
+            }
+
+            if (status.stage) {
+                setStage(status.stage, status.detail || '');
+            }
+
+            connectScanSSE();
+        } catch(e) {
+            console.warn('Scan status check failed: ', e);
+        }
     }
-  };
-}
 
-function closeScanEvents() {
-  if (scanEvtSource) { scanEvtSource.close(); scanEvtSource = null; }
-  const btn = document.getElementById('scan-btn');
-  if (btn) { btn.disabled = false; btn.textContent = '▶ Run Scan'; }
-}
+    function closeScanEvents() {
+        if (scanEvtSource) {
+            scanEvtSource.close();
+            scanEvtSource = null;
+        }
+        const btn = document.getElementById('scan-btn');
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '▶ Run Scan';
+        }
+    }
 
-function setStage(stageKey, detail) {
-  const idx = SCAN_STAGES.findIndex(s => s.key === stageKey);
+    function setStage(stageKey, detail) {
+        const idx = SCAN_STAGES.findIndex(s => s.key === stageKey);
 
-  SCAN_STAGES.forEach((s, i) => {
-    const el = document.getElementById(`step-${s.key}`);
-    if (!el) return;
-    el.className = 'stage-step ' + (i < idx ? 'done' : i === idx ? 'active' : '');
-  });
+        SCAN_STAGES.forEach((s, i) => {
+            const el = document.getElementById(`step-${s.key}`);
+            if (!el) return;
+            el.className = 'stage-step ' + (i < idx ? 'done' : i === idx ? 'active' : '');
+        });
 
-  const detailEl = document.getElementById('stage-detail');
-  if (detailEl) detailEl.textContent = detail;
-}
+        const detailEl = document.getElementById('stage-detail');
+        if (detailEl) detailEl.textContent = detail;
+    }
 
-function finaliseStages(outcome) {
-  // outcome: 'done' | 'failed'
-  SCAN_STAGES.forEach(s => {
-    const el = document.getElementById(`step-${s.key}`);
-    if (!el) return;
-    el.className = `stage-step ${outcome === 'failed' && el.classList.contains('active') ? 'failed' : 'done'}`;
-  });
-}
+    function finaliseStages(outcome) {
+        // outcome: 'done' | 'failed'
+        SCAN_STAGES.forEach(s => {
+            const el = document.getElementById(`step-${s.key}`);
+            if (!el) return;
+            el.className = `stage-step ${outcome === 'failed' && el.classList.contains('active') ? 'failed' : 'done'}`;
+        });
+    }
 
-// ─────────────────────────────────────────────
-// Boot
-// ─────────────────────────────────────────────
-reload();
+    // ─────────────────────────────────────────────
+    // Boot
+    // ─────────────────────────────────────────────
+    reload();
 </script>
 </body>
 </html>

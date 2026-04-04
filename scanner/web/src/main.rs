@@ -29,6 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         client,
         scan_tx,
         scan_running: Arc::new(Mutex::new(false)),
+        scan_stage: Arc::new(Mutex::new(None)),
     };
     let cors = CorsLayer::new().allow_origin(Any);
 
@@ -38,6 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Scan control
         .route("/api/scan", post(api::scan::start).get(api::scan::list))
         .route("/api/scan/events", get(api::scan::events))
+        .route("/api/scan/status", get(api::scan::status))
         .route("/api/scan/{id}", get(api::scan::get_by_id))
         // REST API
         .route("/api/findings", get(api::findings::list))
