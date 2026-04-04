@@ -4,13 +4,13 @@
 # Stop on failure
 set -euo pipefail
 
-BINARY="target/debug/lizt_web"
+BINARY="target/debug/lizt"
 BIN_DIR="/usr/bin"
 CONF_DIR="/etc/lizt"
 LOG_DIR="/var/log/lizt"
 SSL_DIR="/etc/nginx/ssl"
 NGINX_CONF="/etc/nginx/sites-available/lizt"
-SERVICE_FILE="/etc/systemd/system/lizt_web.service"
+SERVICE_FILE="/etc/systemd/system/lizt.service"
 
 if [[ $EUID -ne 0 ]]; then
 	echo "ERROR: Must run as root." >&2
@@ -28,8 +28,8 @@ if ! id lizt &>/dev/null; then
 	echo "Created system user: lizt"
 fi
 
-install -Dm755 "$BINARY" "$BIN_DIR/lizt_web"
-echo "Installed: $BIN_DIR/lizt_web"
+install -Dm755 "$BINARY" "$BIN_DIR/lizt"
+echo "Installed: $BIN_DIR/lizt"
 
 mkdir -p "$CONF_DIR"
 if [[ ! -f "$CONF_DIR/env" ]]; then
@@ -83,19 +83,19 @@ nginx -t
 echo "nginx config installed and validated"
 
 # log4rs
-install -Dm644 scanner/web/conf/web_log4rs.yaml "$CONF_DIR/"
+install -Dm644 scanner/web/conf/log4rs.yaml "$CONF_DIR/"
 
 # Migrations
 cp -r migrations /etc/lizt/migrations
 
 # systemd unit file
-install -Dm644 scanner/web/conf/lizt_web.service "$SERVICE_FILE"
+install -Dm644 scanner/web/conf/lizt.service "$SERVICE_FILE"
 systemctl daemon-reload
-systemctl enable --now lizt_web
+systemctl enable --now lizt
 systemctl reload nginx
 
 echo ""
-echo "Done. lizt_web is running."
+echo "Done. lizt is running."
 echo ""
 echo "  Dashboard: https://$(curl -s ifconfig.me 2>/dev/null || echo '<ec2-public-ip>')"
 echo ""

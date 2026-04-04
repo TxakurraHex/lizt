@@ -34,16 +34,10 @@ fn main() -> Result<()> {
         .collect();
 
     match positional.as_slice() {
-        ["install"] => install_all(release),
-        ["install", "cli"] => install_cli(release),
-        ["install", "web"] => install_web(release),
-        ["install", "monitor"] => install_monitor(release),
-        ["uninstall"] => uninstall_all(),
-        ["uninstall", "cli"] => uninstall_cli(),
-        ["uninstall", "web"] => uninstall_web(),
-        ["uninstall", "monitor"] => uninstall_monitor(),
+        ["install"] => install(release),
+        ["uninstall"] => uninstall(),
         _ => {
-            eprintln!("Usage: cargo xtask <install|uninstall> <cli|web|monitor> [--release]");
+            eprintln!("Usage: cargo xtask <install|uninstall> [--release]");
             std::process::exit(1);
         }
     }
@@ -51,118 +45,51 @@ fn main() -> Result<()> {
 
 // ── install ───────────────────────────────────────────────────────────────────
 
-fn install_all(release: bool) -> Result<()> {
-    install_cli(release)?;
-    install_web(release)?;
-    install_monitor(release)?;
-    Ok(())
-}
-
-fn install_cli(release: bool) -> Result<()> {
+fn install(release: bool) -> Result<()> {
     require_root()?;
     let root = workspace_root();
 
     install_binary(&root, profile(release), "lizt")?;
-    create_dir_all(CONF_DIR)?;
-    create_dir_all(LOG_DIR)?;
-    copy_conf(&root.join("conf/log4rs.yaml"), CONF_DIR, "lizt_log4rs.yaml")?;
-    install_env_if_missing(&root.join("monitor/conf/env.example"))?;
-
-    println!("Done. Run: lizt --help");
-    Ok(())
-}
-
-fn install_web(release: bool) -> Result<()> {
-    require_root()?;
-    let root = workspace_root();
-
-    install_binary(&root, profile(release), "lizt_web")?;
+    install_binary(&root, profile(release), "lizt-cli")?;
     ensure_lizt_user()?;
     setup_log_dir()?;
     install_env_web()?;
     copy_conf(
-        &root.join("scanner/web/conf/web_log4rs.yaml"),
+        &root.join("scanner/web/conf/log4rs.yaml"),
         CONF_DIR,
-        "web_log4rs.yaml",
+        "log4rs.yaml",
     )?;
+    copy_conf(&root.join("conf/log4rs.yaml"), CONF_DIR, "cli_log4rs.yaml")?;
     install_tls_cert()?;
     install_htpasswd()?;
     install_nginx(&root)?;
     install_migrations(&root)?;
-    install_systemd_unit(&root.join("scanner/web/conf/lizt_web.service"))?;
-    run("systemctl", &["enable", "--now", "lizt_web"])?;
+    install_systemd_unit(&root.join("scanner/web/conf/lizt.service"))?;
+    run("systemctl", &["enable", "--now", "lizt"])?;
     run("systemctl", &["reload", "nginx"])?;
 
     println!("\nDone. Dashboard: https://<your-public-ip>  (self-signed cert warning expected)");
     Ok(())
 }
 
-fn install_monitor(release: bool) -> Result<()> {
-    require_root()?;
-    let root = workspace_root();
-
-    // monitor is a separate workspace — its target dir sits under monitor/
-    let binary_src = root.join(format!("monitor/target/{}/lizt_monitord", profile(release)));
-    check_binary(&binary_src, release, "lizt_ebpf")?;
-    install_binary_from(&binary_src, "lizt_monitord")?;
-
-    ensure_lizt_user()?;
-    setup_log_dir()?;
-    copy_conf(
-        &root.join("monitor/conf/monitord_log4rs.yaml"),
-        CONF_DIR,
-        "monitord_log4rs.yaml",
-    )?;
-    install_env_if_missing(&root.join("monitor/conf/env.example"))?;
-    install_systemd_unit(&root.join("monitor/conf/lizt_monitord.service"))?;
-    run("systemctl", &["enable", "--now", "lizt_monitord"])?;
-
-    println!("Done. Check `symbol_observations` table to view any captured symbol probes.");
-    Ok(())
-}
-
 // ── uninstall ─────────────────────────────────────────────────────────────────
 
-fn uninstall_all() -> Result<()> {
-    uninstall_cli()?;
-    uninstall_web()?;
-    uninstall_monitor()?;
-    Ok(())
-}
-
-fn uninstall_cli() -> Result<()> {
+fn uninstall() -> Result<()> {
     require_root()?;
-    remove_files(&["/usr/bin/lizt", "/etc/lizt/lizt_log4rs.yaml"])?;
-    println!("Note: did not remove /etc/lizt/env or /var/log/lizt");
-    Ok(())
-}
+    run("systemctl", &["disable", "--now", "lizt"]).ok();
 
-fn uninstall_web() -> Result<()> {
-    require_root()?;
-    run("systemctl", &["disable", "--now", "lizt_web"]).ok();
     remove_files(&[
-        "/usr/bin/lizt_web",
-        "/etc/systemd/system/lizt_web.service",
-        "/etc/lizt/web_log4rs.yaml",
+        "/usr/bin/lizt",
+        "/usr/bin/lizt-cli",
+        "/etc/systemd/system/lizt.service",
+        "/etc/lizt/log4rs.yaml",
+        "/etc/lizt/cli_log4rs.yaml",
         "/etc/nginx/sites-enabled/lizt",
         "/etc/nginx/sites-available/lizt",
     ])?;
     run("systemctl", &["daemon-reload"])?;
     run("systemctl", &["reload", "nginx"]).ok();
     println!("Note: did not remove /etc/lizt/env, /var/log/lizt, TLS certs, or htpasswd");
-    Ok(())
-}
-
-fn uninstall_monitor() -> Result<()> {
-    require_root()?;
-    run("systemctl", &["disable", "--now", "lizt_monitord"]).ok();
-    remove_files(&[
-        "/usr/bin/lizt_monitord",
-        "/etc/systemd/system/lizt_monitord.service",
-        "/etc/lizt/monitord_log4rs.yaml",
-    ])?;
-    run("systemctl", &["daemon-reload"])?;
-    println!("Note: did not remove /etc/lizt/env or /var/log/lizt");
     Ok(())
 }
 
@@ -188,21 +115,6 @@ fn ensure_lizt_user() -> Result<()> {
 fn setup_log_dir() -> Result<()> {
     create_dir_all(LOG_DIR)?;
     run("chown", &["lizt:lizt", LOG_DIR])
-}
-
-fn install_env_if_missing(example: &Path) -> Result<()> {
-    let dst = Path::new(CONF_DIR).join("env");
-    if !dst.exists() {
-        fs::copy(example, &dst).with_context(|| format!("Failed to create {}", dst.display()))?;
-        set_permissions(&dst, 0o600)?;
-        println!(
-            "Created {}, update DATABASE_URL and NVD_API_KEY",
-            dst.display()
-        );
-    } else {
-        println!("Skipping env file (already exists): {}", dst.display());
-    }
-    Ok(())
 }
 
 fn install_env_web() -> Result<()> {

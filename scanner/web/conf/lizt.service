@@ -1,0 +1,24 @@
+[Unit]
+Description=lizt Dashboard + eBPF Monitor
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/lizt
+EnvironmentFile=/etc/lizt/env
+Restart=on-failure
+RestartSec=5
+
+User=lizt
+Group=lizt
+AmbientCapabilities=CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON CAP_SYS_RESOURCE
+
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/log/lizt
+ReadWritePaths=/sys/fs/bpf
+ReadOnlyPaths=/sys/kernel/debug
+
+[Install]
+WantedBy=multi-user.target

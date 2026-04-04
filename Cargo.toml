@@ -12,10 +12,12 @@ members = [
     # Core
     "core/common",
     "core/db",
+    # Monitor
+    "monitor",
     # Tooling
     "xtask",
 ]
-exclude = ["monitor"]
+exclude = ["monitor/ebpf_programs"]
 resolver = "2"
 
 [workspace.package]
@@ -30,6 +32,7 @@ pipeline = { path = "pipeline" }
 io-inventory = { path = "io/inventory" }
 io-nvd = { path = "io/nvd" }
 io-symbols = { path = "io/symbols" }
+monitor = { path = "monitor" }
 
 # Async
 tokio = { version = "1", features = ["full"] }
@@ -69,6 +72,11 @@ regex = "1"
 radix_trie = "0.3"
 phf = { version = "0.13", features = ["macros"] }
 strum = { version = "0.28", features = ["derive"] }
+
+# eBPF
+aya = { version = "0.13", features = ["async_tokio"] }
+aya-log = "0.2"
+anyhow = "1"
 
 # Error handling
 thiserror = "2"

@@ -35,33 +35,28 @@ System inventory → CPE matching → CVE lookup → Symbol extraction → Symbo
 
 ```
 lizt/
-  Cargo.toml              # Scanner workspace
+  Cargo.toml              # Workspace root
   .cargo/config.toml      # Defines `cargo xtask` alias
   xtask/                  # Install/uninstall tasks for all binaries
   scanner/
-    cli/                  # CLI binary: lizt (scan, inventory, symbols, rank, reset, configure)
-    web/                  # Web dashboard binary: lizt_web (Axum, port 8080)
+    cli/                  # CLI binary: lizt-cli (scan, inventory, symbols, rank, reset, configure)
+    web/                  # Web dashboard + eBPF monitor binary: lizt (Axum, port 8080)
   io/
     inventory/            # System inventory collection
     nvd/                  # NVD, GitHub, and OSV HTTP client
     symbols/              # Vulnerable symbol extraction
   pipeline/               # Scan pipeline orchestration (inventory → CPE → CVE → symbols → validate → persist)
-  core/                   # Shared crates (used by both scanner and monitor)
+  core/                   # Shared crates
     common/               # Domain models (Symbol, Cve, CpeEntry, FindingRecord, ResolvedSymbol, etc.)
     db/                   # PostgreSQL database layer
-  conf/                   # Shared config templates (log4rs, env, systemd unit)
-  monitor/                # Monitor workspace (Linux only)
-    Cargo.toml
-    crates/
-      ebpf/               # Userspace eBPF loader and observer (daemon binary)
-      ebpf_programs/      # Kernel-side BPF programs (compiled to bpfel-unknown-none)
-    conf/
-      lizt_monitord.service  # systemd unit file
-      env.example            # Template for /etc/lizt/env credentials file
+  conf/                   # Shared config templates (log4rs, env)
+  monitor/                # eBPF monitor library (loader + observer)
+    ebpf_programs/        # Kernel-side BPF programs (compiled to bpfel-unknown-none)
 ```
 
-The scanner and monitor are separate Cargo workspaces. The scanner builds on macOS and Linux;
-the monitor is Linux-only due to its use of Linux kernel interfaces.
+The monitor is built into the `lizt` web binary and runs as a background task alongside the
+web server. A single systemd service handles both. Linux kernel 5.8+ is required for BPF
+ring buffer support.
 
 ## Prerequisites
 
@@ -70,13 +65,12 @@ the monitor is Linux-only due to its use of Linux kernel interfaces.
 - Rust toolchain (edition 2024, stable)
 - PostgreSQL
 
-### Monitor (additional requirements)
+### eBPF monitor (additional requirements)
 
 - Linux kernel 5.8+ (required for BPF ring buffers)
 - Nightly Rust toolchain (`rustup toolchain install nightly`)
 - `rust-src` component (`rustup component add rust-src --toolchain nightly`)
-- `bpf-linker` (`cargo install bpf-linker`)
-- Root or `CAP_BPF + CAP_PERFMON` capabilities at runtime
+- `CAP_BPF + CAP_PERFMON + CAP_SYS_RESOURCE` capabilities at runtime (or root)
 
 ## Setup
 
@@ -94,23 +88,17 @@ export ADMINDB_URL="postgres://admin:password@localhost/postgres"
 export DATABASE_NAME="lizt"
 ```
 
-### 2. Build the scanner
+### 2. Build
 
 ```bash
-cargo build --release           # builds lizt, lizt_web, and xtask
+cargo build --release           # builds lizt, lizt-cli, and xtask
 ```
 
-### 3. Build the monitor (Linux only)
+The build compiles the BPF kernel programs (targeting `bpfel-unknown-none`) via a `build.rs`
+script and embeds the resulting bytecode directly into the `lizt` binary. No separate BPF
+object file is deployed.
 
-```bash
-cd monitor && cargo build --release -p lizt_ebpf
-```
-
-The build compiles the BPF kernel programs (targeting `bpfel-unknown-none`) and embeds the
-resulting bytecode directly into the `lizt_monitord` binary. No separate BPF object file is
-deployed.
-
-### 4. Run the scanner
+### 3. Run the scanner
 
 ```bash
 cargo run -p cli -- scan
@@ -122,45 +110,43 @@ without remembering subcommand names.
 
 ### 5. Install (optional — for running as system services)
 
-The `xtask` binary installs binaries, config files, and systemd units for any of the three
-targets. Build it first with `cargo build --release`, then run it directly with `sudo -E` to
-preserve environment variables:
+The `xtask` binary installs binaries, config files, and systemd units. Build first with
+`cargo build --release`, then run with `sudo -E` to preserve environment variables:
 
 ```bash
-sudo -E ./target/release/xtask install cli      # /usr/bin/lizt + log config
-sudo -E ./target/release/xtask install web      # /usr/bin/lizt_web + nginx + systemd
-sudo -E ./target/release/xtask install monitor  # /usr/bin/lizt_monitord + systemd
+sudo -E ./target/release/xtask install    # /usr/bin/lizt + /usr/bin/lizt-cli + nginx + systemd
 ```
 
 To uninstall:
 
 ```bash
-sudo -E ./target/release/xtask uninstall cli
-sudo -E ./target/release/xtask uninstall web
-sudo -E ./target/release/xtask uninstall monitor
+sudo -E ./target/release/xtask uninstall
 ```
 
 Each install creates `/etc/lizt/env` from the template if it does not already exist — edit it
 to set `DATABASE_URL` and `NVD_API_KEY` before starting any service. Credentials are loaded
 via `EnvironmentFile=/etc/lizt/env` and never appear in the unit file or source tree.
 
-### 6. Run the monitor ad-hoc (Linux only, requires prior scan)
+The systemd service grants `CAP_BPF`, `CAP_PERFMON`, and `CAP_SYS_RESOURCE` via ambient
+capabilities so the eBPF monitor can attach probes without running as root.
+
+### 6. Run ad-hoc (requires prior scan for eBPF probes)
 
 ```bash
-sudo -E ./monitor/target/release/lizt_monitord
+sudo -E ./target/release/lizt
 ```
 
 `-E` preserves environment variables (`DATABASE_URL` etc.). Alternatively, grant the binary
 specific capabilities instead of running as root:
 
 ```bash
-sudo setcap cap_bpf,cap_perfmon+eip ./monitor/target/release/lizt_monitord
-./monitor/target/release/lizt_monitord
+sudo setcap cap_bpf,cap_perfmon,cap_sys_resource+eip ./target/release/lizt
+./target/release/lizt
 ```
 
 ## CLI Subcommands (Scanner)
 
-Running `lizt` without a subcommand opens an interactive TUI menu (powered by
+Running `lizt-cli` without a subcommand opens an interactive TUI menu (powered by
 [inquire](https://github.com/mikaelmello/inquire)) that loops through a Select prompt until
 you choose Quit. Each menu entry maps directly to one of the subcommands below.
 
@@ -181,20 +167,22 @@ file is loaded at startup so credentials survive across shell sessions without r
 
 ## eBPF Monitor
 
-The monitor is a long-running daemon that reads vulnerable symbols from the database and
-attaches eBPF probes to observe whether they are called at runtime.
+The eBPF monitor runs as a background task inside the `lizt` web binary. It reads vulnerable
+symbols from the database, attaches eBPF probes, and observes whether they are called at
+runtime. Probes are automatically reloaded whenever a scan completes.
 
 ### Architecture
 
 The monitor is split into two crates:
 
-- **`ebpf_programs`** — the kernel-side BPF programs, written in Rust using
-  [aya-ebpf](https://aya-rs.dev) and compiled to the `bpfel-unknown-none` target. Contains a
-  single probe handler (`try_probe`) shared by both kprobe and uprobe program types.
+- **`ebpf_programs`** (`monitor/ebpf_programs/`) — the kernel-side BPF programs, written in
+  Rust using [aya-ebpf](https://aya-rs.dev) and compiled to the `bpfel-unknown-none` target.
+  Contains a single probe handler (`try_probe`) shared by both kprobe and uprobe program types.
 
-- **`ebpf`** — the userspace daemon (`lizt_monitord` binary), also written in Rust using
+- **`monitor`** (`monitor/`) — the userspace library, written in Rust using
   [aya](https://aya-rs.dev). Reads symbols from the database, loads and attaches probes, and
-  consumes events from the kernel via a ring buffer.
+  consumes events from the kernel via a ring buffer. Spawned as a background Tokio task by
+  the web binary.
 
 ### Probe loading
 
@@ -225,7 +213,7 @@ called, the kernel-side probe writes an event containing:
 - `comm` — process name (up to 16 bytes, null-terminated)
 - `cve_symbol_id` — the database ID of the symbol, copied from the `CVE_SYMBOL_ID` global
 
-The userspace daemon spawns one async Tokio task per probe. Each task wraps the ring buffer's
+The monitor spawns one async Tokio task per probe. Each task wraps the ring buffer's
 file descriptor in a `tokio::io::unix::AsyncFd` to receive kernel readiness notifications
 without busy-polling. When the kernel signals that events are available, the task drains the
 ring buffer and upserts each event into the `symbol_observations` table, incrementing
