@@ -1,4 +1,5 @@
 pub mod cve;
+pub mod eval;
 pub mod findings;
 pub mod inventory;
 pub mod observations;

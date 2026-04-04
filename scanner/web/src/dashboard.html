@@ -812,6 +812,15 @@
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
           <h2 style="margin:0;font-size:15px;font-weight:700">Run a scan</h2>
           <button id="scan-btn" class="scan-btn" onclick="startScan()">▶ Run Scan</button>
+          <div style="height:20px;width:1px;background:var(--border)"></div>
+          <select id="fixture-select" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px">
+            <option value="sudo">sudo</option>
+            <option value="bash">bash</option>
+            <option value="libexpat">libexpat</option>
+            <option value="openssl">openssl</option>
+            <option value="all">all</option>
+          </select>
+          <button id="eval-btn" class="scan-btn" onclick="startEval()">▶ Run Eval</button>
         </div>
         <div id="stage-tracker" style="display:none">
           <div class="stage-bar" id="stage-bar">
@@ -881,6 +890,42 @@
                 alert(`Failed to start scan: ${e.message}`);
             }
         };
+    }
+
+    function startEval() {
+        const btn = document.getElementById('eval-btn');
+        const scanBtn = document.getElementById('scan-btn');
+        const fixture = document.getElementById('fixture-select').value;
+        btn.disabled = true;
+        scanBtn.disabled = true;
+        btn.textContent = 'Connecting...';
+
+        const tracker = document.getElementById('stage-tracker');
+        if (tracker) tracker.style.display = 'block';
+
+        connectScanSSE();
+
+        scanEvtSource.onopen = async() => {
+            try {
+                btn.textContent = 'Starting...';
+                const res = await fetch('/api/eval', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({fixture}),
+                });
+                if (!res.ok) {
+                    const msg = res.status === 409 ? 'A scan is already running' : await res.text();
+                    throw new Error(msg);
+                }
+                btn.textContent = 'Running...';
+            } catch(e) {
+                closeScanEvents();
+                btn.disabled = false;
+                scanBtn.disabled = false;
+                btn.textContent = '▶ Run Eval';
+                alert(`Failed to start eval: ${e.message}`);
+            }
+        }
     }
 
     function connectScanSSE() {
@@ -959,10 +1004,16 @@
             scanEvtSource.close();
             scanEvtSource = null;
         }
-        const btn = document.getElementById('scan-btn');
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = '▶ Run Scan';
+        const scanBtn = document.getElementById('scan-btn');
+        if (scanBtn) {
+            scanBtn.disabled = false;
+            scanBtn.textContent = '▶ Run Scan';
+        }
+
+        const evalBtn = document.getElementById('eval-btn');
+        if (evalBtn) {
+            evalBtn.disabled = false;
+            evalBtn.textContent = '▶ Run Eval';
         }
     }
 
