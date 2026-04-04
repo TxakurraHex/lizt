@@ -62,13 +62,13 @@ fn install_cli(release: bool) -> Result<()> {
     require_root()?;
     let root = workspace_root();
 
-    install_binary(&root, profile(release), "lizt")?;
+    install_binary(&root, profile(release), "lizt-cli")?;
     create_dir_all(CONF_DIR)?;
     create_dir_all(LOG_DIR)?;
-    copy_conf(&root.join("conf/log4rs.yaml"), CONF_DIR, "lizt_log4rs.yaml")?;
+    copy_conf(&root.join("conf/log4rs.yaml"), CONF_DIR, "cli_log4rs.yaml")?;
     install_env_if_missing(&root.join("monitor/conf/env.example"))?;
 
-    println!("Done. Run: lizt --help");
+    println!("Done. Run: lizt-cli --help");
     Ok(())
 }
 
@@ -76,21 +76,21 @@ fn install_web(release: bool) -> Result<()> {
     require_root()?;
     let root = workspace_root();
 
-    install_binary(&root, profile(release), "lizt_web")?;
+    install_binary(&root, profile(release), "lizt")?;
     ensure_lizt_user()?;
     setup_log_dir()?;
     install_env_web()?;
     copy_conf(
-        &root.join("scanner/web/conf/web_log4rs.yaml"),
+        &root.join("scanner/web/conf/log4rs.yaml"),
         CONF_DIR,
-        "web_log4rs.yaml",
+        "log4rs.yaml",
     )?;
     install_tls_cert()?;
     install_htpasswd()?;
     install_nginx(&root)?;
     install_migrations(&root)?;
-    install_systemd_unit(&root.join("scanner/web/conf/lizt_web.service"))?;
-    run("systemctl", &["enable", "--now", "lizt_web"])?;
+    install_systemd_unit(&root.join("scanner/web/conf/lizt.service"))?;
+    run("systemctl", &["enable", "--now", "lizt"])?;
     run("systemctl", &["reload", "nginx"])?;
 
     println!("\nDone. Dashboard: https://<your-public-ip>  (self-signed cert warning expected)");
@@ -132,18 +132,18 @@ fn uninstall_all() -> Result<()> {
 
 fn uninstall_cli() -> Result<()> {
     require_root()?;
-    remove_files(&["/usr/bin/lizt", "/etc/lizt/lizt_log4rs.yaml"])?;
+    remove_files(&["/usr/bin/lizt-cli", "/etc/lizt/cli_log4rs.yaml"])?;
     println!("Note: did not remove /etc/lizt/env or /var/log/lizt");
     Ok(())
 }
 
 fn uninstall_web() -> Result<()> {
     require_root()?;
-    run("systemctl", &["disable", "--now", "lizt_web"]).ok();
+    run("systemctl", &["disable", "--now", "lizt"]).ok();
     remove_files(&[
-        "/usr/bin/lizt_web",
-        "/etc/systemd/system/lizt_web.service",
-        "/etc/lizt/web_log4rs.yaml",
+        "/usr/bin/lizt",
+        "/etc/systemd/system/lizt.service",
+        "/etc/lizt/log4rs.yaml",
         "/etc/nginx/sites-enabled/lizt",
         "/etc/nginx/sites-available/lizt",
     ])?;

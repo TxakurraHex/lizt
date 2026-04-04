@@ -5,7 +5,7 @@ Wants=lizt_monitord.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/lizt_web
+ExecStart=/usr/bin/lizt
 EnvironmentFile=/etc/lizt/env
 Restart=on-failure
 RestartSec=5

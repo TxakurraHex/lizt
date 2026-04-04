@@ -17,7 +17,7 @@ use tower_http::cors::{Any, CorsLayer};
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     load_config();
 
-    log4rs::init_file("/etc/lizt/web_log4rs.yaml", Default::default())
+    log4rs::init_file("/etc/lizt/log4rs.yaml", Default::default())
         .unwrap_or_else(|_| eprintln!("log4rs config not found, using stderr"));
 
     let pool = db::connect().await?;

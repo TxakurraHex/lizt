@@ -39,8 +39,8 @@ lizt/
   .cargo/config.toml      # Defines `cargo xtask` alias
   xtask/                  # Install/uninstall tasks for all binaries
   scanner/
-    cli/                  # CLI binary: lizt (scan, inventory, symbols, rank, reset, configure)
-    web/                  # Web dashboard binary: lizt_web (Axum, port 8080)
+    cli/                  # CLI binary: lizt-cli (scan, inventory, symbols, rank, reset, configure)
+    web/                  # Web dashboard binary: lizt (Axum, port 8080)
   io/
     inventory/            # System inventory collection
     nvd/                  # NVD, GitHub, and OSV HTTP client
@@ -97,7 +97,7 @@ export DATABASE_NAME="lizt"
 ### 2. Build the scanner
 
 ```bash
-cargo build --release           # builds lizt, lizt_web, and xtask
+cargo build --release           # builds lizt, lizt-cli, and xtask
 ```
 
 ### 3. Build the monitor (Linux only)
@@ -127,8 +127,8 @@ targets. Build it first with `cargo build --release`, then run it directly with 
 preserve environment variables:
 
 ```bash
-sudo -E ./target/release/xtask install cli      # /usr/bin/lizt + log config
-sudo -E ./target/release/xtask install web      # /usr/bin/lizt_web + nginx + systemd
+sudo -E ./target/release/xtask install cli      # /usr/bin/lizt-cli + log config
+sudo -E ./target/release/xtask install web      # /usr/bin/lizt + nginx + systemd
 sudo -E ./target/release/xtask install monitor  # /usr/bin/lizt_monitord + systemd
 ```
 
@@ -160,7 +160,7 @@ sudo setcap cap_bpf,cap_perfmon+eip ./monitor/target/release/lizt_monitord
 
 ## CLI Subcommands (Scanner)
 
-Running `lizt` without a subcommand opens an interactive TUI menu (powered by
+Running `lizt-cli` without a subcommand opens an interactive TUI menu (powered by
 [inquire](https://github.com/mikaelmello/inquire)) that loops through a Select prompt until
 you choose Quit. Each menu entry maps directly to one of the subcommands below.
 

@@ -10,7 +10,7 @@ use tokio::sync::broadcast;
 
 #[derive(Parser)]
 #[command(
-    name = "lizt",
+    name = "lizt-cli",
     version = "0.1.0",
     about = "Reachability-aware vulnerability analysis tool"
 )]
@@ -46,7 +46,7 @@ enum Commands {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     load_config();
 
-    let log_conf_filepath = "/etc/lizt/lizt_log4rs.yaml";
+    let log_conf_filepath = "/etc/lizt/cli_log4rs.yaml";
     log4rs::init_file(log_conf_filepath, Default::default()).unwrap_or_else(|_| {
         eprintln!("log4rs config ({log_conf_filepath}) not found, using stderr")
     });
