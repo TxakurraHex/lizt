@@ -163,7 +163,7 @@ pub fn is_likely_function_name(name: &str) -> bool {
     }
 
     // Reject file paths (contain / or .)
-    if name.contains('/') || name.contains('.') {
+    if name.contains('/') || (name.contains('.') && !name.ends_with('.')) {
         return false;
     }
 
