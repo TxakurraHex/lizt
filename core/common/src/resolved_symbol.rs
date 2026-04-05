@@ -84,7 +84,7 @@ impl SymbolIndex {
 
 fn exported_symbols(lib_path: &Path) -> Vec<String> {
     let path_str = lib_path.display();
-    let cmd = format!("nm -D --defined-only {path_str} 2>/dev/null");
+    let cmd = format!("nm --defined-only {path_str} 2>/dev/null");
     debug!("[exported_symbols] cmd = {cmd}");
     let Some(output) = run(&cmd) else {
         return vec![];
