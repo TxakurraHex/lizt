@@ -155,18 +155,15 @@ pub async fn run_eval(
     events: broadcast::Sender<ScanEvent>,
 ) -> Result<Uuid, PipelineError> {
     let mut inventory = match fixture_name {
-        "sudo" => fixtures::sudo_cve_2021_3156(),
-        "bash" => fixtures::bash_cve_2014_6271(),
         "libexpat" => fixtures::libexpat_cve_2022_25236(),
         "openssl" => fixtures::openssl_cve_2022_0778(),
+        "zlib" => fixtures::zlib_cve_2022_37434(),
         "all" => fixtures::all_eval_fixtures(),
         other => {
             return Err(PipelineError::Stage {
                 stage: "eval",
-                source: format!(
-                    "unknown fixture '{other}'; valid: sudo, bash, libexpat, openssl, all"
-                )
-                .into(),
+                source: format!("unknown fixture '{other}'; valid: libexpat, openssl, zlib, all")
+                    .into(),
             });
         }
     };
