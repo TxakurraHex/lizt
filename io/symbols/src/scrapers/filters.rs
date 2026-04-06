@@ -192,7 +192,7 @@ pub fn is_likely_function_name(name: &str) -> bool {
 /// Returns `true` if the path looks like test/example code.
 pub fn is_test_path(path: &str) -> bool {
     let lower = path.to_lowercase();
-    lower.contains("/test/")
+    lower.contains("test/")
         || lower.contains("tests/")
         || lower.contains("testing/")
         || lower.contains("examples/")
