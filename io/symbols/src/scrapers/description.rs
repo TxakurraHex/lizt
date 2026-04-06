@@ -7,13 +7,50 @@ use std::sync::OnceLock;
 use crate::extractor::Scraper;
 use crate::scrapers::filters::is_likely_function_name;
 
+const KNOWN_API_PREFIXES: &[&str] = &[
+    // OpenSSL
+    "SSL_",
+    "EVP_",
+    "BN_",
+    "BIO_",
+    "RSA_",
+    "EC_",
+    "X509_",
+    "PEM_",
+    "HMAC_",
+    "PKCS",
+    "ASN1_",
+    "OSSL_",
+    // zlib
+    "inflate",
+    "deflate",
+    "compress",
+    "uncompress",
+    // libexpat / libxml2
+    "XML_",
+    "xml",
+    "Html",
+    // glibc / POSIX
+    "__libc_",
+    "__GI_",
+    // GnuTLS
+    "gnutls_",
+    // libcurl
+    "curl_",
+    "Curl_",
+    // libssh
+    "ssh_",
+    // kernel (double-underscore already passes, but for the sake of being explicit:)
+    "__",
+];
+
 fn function_name_pattern_regexes() -> &'static (Regex, Regex, Regex, Regex, Regex, Regex) {
     static REGEXES: OnceLock<(Regex, Regex, Regex, Regex, Regex, Regex)> = OnceLock::new();
     REGEXES.get_or_init(|| (
         Regex::new(r"\b([a-zA-Z_][a-zA-Z0-9_]{2,})\s*\(\)").unwrap(),
         Regex::new(r"`([a-zA-Z_][a-zA-Z0-9_]{2,})`").unwrap(),
-        Regex::new(r#"(?i)(vulnerable function|affected function|function|method|symbol|API|call to)\s+[`"]?([a-zA-Z_][a-zA-Z0-9_]{2,})[`"]?"#, ).unwrap(),
-        Regex::new(r#"(?i)[`"]?([a-zA-Z_][a-zA-Z0-9_]{2,})[`"]?\s+(vulnerable function|affected function|function|method|symbol|API|call from)"#,).unwrap(),
+        Regex::new(r#"(?i)(vulnerable function|affected function|function|method|symbol|API|call to|call)\s+[`"]?([a-zA-Z_][a-zA-Z0-9_]{2,})[`"]?"#).unwrap(),
+        Regex::new(r#"(?i)[`"]?([a-zA-Z_][a-zA-Z0-9_]{2,})[`"]?\s+(vulnerable function|affected function|function|method|symbol|API|call from|call)"#).unwrap(),
         Regex::new(r#"\s+(__[a-zA-Z0-9_]*|do_[a-zA-Z0-9_]*|sys_[a-zA-Z0-9_]*|ksys_[a-zA-Z0-9_]*|nf_[a-zA-Z0-9_]*|ip_[a-zA-Z0-9_]*|tcp_[a-zA-Z0-9_]*|udp_[a-zA-Z0-9_]*|xfs_[a-zA-Z0-9_]*|ext4_[a-zA-Z0-9_]*|btrfs_[a-zA-Z0-9_]*|sk_[a-zA-Z0-9_]*|net_[a-zA-Z0-9_]*|sctp_[a-zA-Z0-9_]*)"#).unwrap(),
         Regex::new(r"(?i)\bin\s+([a-zA-Z_][a-zA-Z0-9_]{3,})\b").unwrap(),
     ))
@@ -78,42 +115,6 @@ fn in_regex_filter(name: &str) -> bool {
         return true;
     }
 
-    const KNOWN_API_PREFIXES: &[&str] = &[
-        // OpenSSL
-        "SSL_",
-        "EVP_",
-        "BN_",
-        "BIO_",
-        "RSA_",
-        "EC_",
-        "X509_",
-        "PEM_",
-        "HMAC_",
-        "PKCS",
-        "ASN1_",
-        "OSSL_",
-        // zlib
-        "inflate",
-        "deflate",
-        "compress",
-        "uncompress",
-        // libexpat / libxml2
-        "XML_",
-        "xml",
-        "Html",
-        // glibc / POSIX
-        "__libc_",
-        "__GI_",
-        // GnuTLS
-        "gnutls_",
-        // libcurl
-        "curl_",
-        "Curl_",
-        // libssh
-        "ssh_",
-        // kernel (double-underscore already passes, but explicit)
-        "__",
-    ];
     if KNOWN_API_PREFIXES.iter().any(|p| name.starts_with(p)) {
         return true;
     }
@@ -215,6 +216,17 @@ pub fn scrape_description(description: &str, cve_id: &str) -> Vec<Symbol> {
         }
     }
 
+    // Boost the symbols matching well-known API/library prefixes to Medium so they pass the validity filter
+    for symbol in &mut symbols {
+        if symbol.confidence == SymbolConfidence::Low
+            && KNOWN_API_PREFIXES
+                .iter()
+                .any(|p| symbol.name.starts_with(p))
+        {
+            symbol.confidence = SymbolConfidence::Medium;
+        }
+    }
+
     // Filter using shared filtering logic
     symbols
         .into_iter()
@@ -230,4 +242,32 @@ fn surrounding(text: &str, start: usize, end: usize, pad: usize) -> String {
     let lo = text.floor_char_boundary(lo);
     let hi = text.ceil_char_boundary(hi);
     text[lo..hi].trim().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cve_2022_37434_extracts_inflate_symbols() {
+        let desc = "zlib through 1.2.12 has a heap-based buffer over-read or buffer overflow \
+                    in inflate in inflate.c via a large gzip header extra field. NOTE: only \
+                    applications that call inflateGetHeader are affected.";
+        let symbols = scrape_description(desc, "CVE-2022-37434");
+        let names: Vec<&str> = symbols.iter().map(|s| s.name.as_str()).collect();
+        assert!(
+            names.contains(&"inflate"),
+            "should extract 'inflate'; got: {names:?}"
+        );
+        assert!(
+            names.contains(&"inflateGetHeader"),
+            "should extract 'inflateGetHeader'; got: {names:?}"
+        );
+        // Both should be medium after boost
+        for symbol in &symbols {
+            if symbol.name == "inflate" || symbol.name == "inflateGetHeader" {
+                assert_eq!(symbol.confidence, SymbolConfidence::Medium);
+            }
+        }
+    }
 }

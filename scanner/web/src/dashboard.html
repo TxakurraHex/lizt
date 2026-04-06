@@ -661,11 +661,11 @@
 
                 document.getElementById('main-content').innerHTML = `
       <div class="stat-strip">
-        <div class="stat-box"><div class="label">Total Findings</div><div class="value">${data.length}</div></div>
-        <div class="stat-box"><div class="label">Critical (9+)</div><div class="value red">${critical}</div></div>
-        <div class="stat-box"><div class="label">High (7–9)</div><div class="value orange">${high}</div></div>
-        <div class="stat-box"><div class="label">KEV Listed</div><div class="value red">${kev}</div></div>
-        <div class="stat-box"><div class="label">Symbol Called</div><div class="value purple">${called}</div></div>
+        <div class="stat-box"><div class="label">Total Findings</div><div class="value" id="findings-total">${data.length}</div></div>
+        <div class="stat-box"><div class="label">Critical (9+)</div><div class="value red" id="findings-critical">${critical}</div></div>
+        <div class="stat-box"><div class="label">High (7–9)</div><div class="value orange" id="findings-high">${high}</div></div>
+        <div class="stat-box"><div class="label">KEV Listed</div><div class="value red" id="findings-kev">${kev}</div></div>
+        <div class="stat-box"><div class="label">Symbol Called</div><div class="value purple" id="findings-called">${called}</div></div>
       </div>
       <div class="card">
         <div class="search-row">
@@ -707,6 +707,12 @@
     </tr>
   `).join('');
             if (!rows.length) tbody.innerHTML = '<tr><td colspan="7" class="state-msg">No results</td></tr>';
+            const element = id => document.getElementById(id);
+            element('findings-total').textContent = rows.length;
+            element('findings-critical').textContent = rows.filter(r => r.cvss_score >= 9).length;
+            element('findings-high').textContent = rows.filter(r => r.cvss_score >= 7 & r.cvss_score <9).length;
+            element('findings-kev').textContent = rows.filter(r => r.kev_listed).length;
+            element('findings-called').textContent = rows.filter(r => r.symbol_called).length;
         }
 
         // ─────────────────────────────────────────────
@@ -1059,7 +1065,13 @@
 
         function startScan() {
             const btn = document.getElementById('scan-btn');
+            const evalBtn = document.getElementById('eval-btn');
+            const fixtureSelect = document.getElementById('fixture-select');
+            const fixture = fixtureSelect.value;
+
             btn.disabled = true;
+            evalBtn.disabled = true;
+            fixtureSelect.disabled = true;
             btn.textContent = 'Connecting...';
 
             const tracker = document.getElementById('stage-tracker');
@@ -1078,6 +1090,9 @@
                     btn.textContent = 'Running...';
                 } catch (e) {
                     closeScanEvents();
+                    btn.disabled = false;
+                    evalBtn.disabled = false;
+                    fixture.disabled = false;
                     alert(`Failed to start scan: ${e.message}`);
                 }
             };
@@ -1086,9 +1101,12 @@
         function startEval() {
             const btn = document.getElementById('eval-btn');
             const scanBtn = document.getElementById('scan-btn');
-            const fixture = document.getElementById('fixture-select').value;
+            const fixtureSelect = document.getElementById('fixture-select');
+            const fixture = fixtureSelect.value;
+
             btn.disabled = true;
             scanBtn.disabled = true;
+            fixtureSelect.disabled = true;
             btn.textContent = 'Connecting...';
 
             const tracker = document.getElementById('stage-tracker');
@@ -1113,6 +1131,7 @@
                     closeScanEvents();
                     btn.disabled = false;
                     scanBtn.disabled = false;
+                    fixture.disabled = false;
                     btn.textContent = '▶ Run Eval';
                     alert(`Failed to start eval: ${e.message}`);
                 }
