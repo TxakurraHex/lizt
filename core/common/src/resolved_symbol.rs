@@ -115,6 +115,7 @@ fn static_library_files(package_name: &str) -> Vec<PathBuf> {
         "bash" => paths.push(PathBuf::from("/opt/vulnerable/bin/bash")),
         "libexpat" => paths.push(PathBuf::from("/opt/vulnerable/lib/libexpat.so.1")),
         "openssl" => paths.push(PathBuf::from("/opt/vulnerable/lib/libcrypto.so.1.1")),
+        "zlib" => paths.push(PathBuf::from("/opt/vulnerable/lib/libz.so.1")),
         _ => error!("Static package {} not supported", package_name),
     };
     paths
