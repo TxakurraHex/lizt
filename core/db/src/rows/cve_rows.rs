@@ -26,6 +26,8 @@ impl From<CveRow> for Cve {
             cvss_score: row.cvss_score,
             cvss_vector: row.cvss_vector.clone(),
             cvss_version: row.cvss_version.clone(),
+            epss_score: None,
+            epss_percentile: None,
             cpes: None, // Fetched separately, from another table
         }
     }

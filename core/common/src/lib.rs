@@ -9,3 +9,4 @@ pub mod resolved_symbol;
 pub mod scan;
 pub mod symbol;
 pub mod symbol_observation;
+pub mod version_cmp;

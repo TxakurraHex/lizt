@@ -121,6 +121,8 @@ impl From<NvdCveItem> for Cve {
             cvss_score: cvss.as_ref().map(|c| c.score),
             cvss_vector: cvss.as_ref().map(|c| c.vector.clone()),
             cvss_version: cvss.as_ref().map(|c| c.version.clone()),
+            epss_score: None,
+            epss_percentile: None,
             cpes: value.configurations.map(|configs| {
                 configs
                     .into_iter()

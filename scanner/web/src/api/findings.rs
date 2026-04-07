@@ -19,6 +19,7 @@ pub struct FindingSummaryResponse {
     pub symbol_present: Option<bool>,
     pub symbol_called: Option<bool>,
     pub rank_score: Option<Decimal>,
+    pub epss_score: Option<Decimal>,
 }
 
 impl From<FindingSummary> for FindingSummaryResponse {
@@ -36,6 +37,7 @@ impl From<FindingSummary> for FindingSummaryResponse {
             symbol_present: s.symbol_present,
             symbol_called: s.symbol_called,
             rank_score: s.rank_score,
+            epss_score: s.epss_score,
         }
     }
 }

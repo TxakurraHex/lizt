@@ -12,6 +12,8 @@ pub struct Cve {
     pub cvss_score: Option<Decimal>,
     pub cvss_vector: Option<String>,
     pub cvss_version: Option<String>,
+    pub epss_score: Option<Decimal>,
+    pub epss_percentile: Option<Decimal>,
     pub cpes: Option<Vec<CveCpe>>,
 }
 
@@ -30,4 +32,32 @@ pub struct CveCpe {
 pub struct CveRef {
     pub url: String,
     pub tags: Option<Vec<String>>,
+}
+
+impl CveCpe {
+    pub fn matches_version(&self, installed_version: &str) -> bool {
+        crate::version_cmp::version_in_range(
+            installed_version,
+            self.version_start_including.as_deref(),
+            self.version_start_excluding.as_deref(),
+            self.version_end_including.as_deref(),
+            self.version_end_excluding.as_deref(),
+        )
+    }
+}
+
+impl Cve {
+    pub fn affects_version(&self, vendor: &str, product: &str, installed_version: &str) -> bool {
+        let cpe_matches = match &self.cpes {
+            Some(cpes) if !cpes.is_empty() => cpes,
+            _ => return true,
+        };
+
+        cpe_matches.iter().any(|m| {
+            m.vulnerable
+                && m.cpe.vendor == vendor
+                && m.cpe.product == product
+                && m.matches_version(installed_version)
+        })
+    }
 }

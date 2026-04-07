@@ -2,11 +2,13 @@ const MAX_RETRIES: u32 = 3;
 const NVD_CVE_ENDPOINT: &str = "https://services.nvd.nist.gov/rest/json/cves/2.0";
 const NVD_CPE_ENDPOINT: &str = "https://services.nvd.nist.gov/rest/json/cpes/2.0";
 const OSV_ENDPOINT: &str = "https://api.osv.dev/v1/vulns";
+const EPSS_ENDPOINT: &str = "https://api.first.org/data/v1/epss";
 
 use crate::rate_limiter::RateLimiter;
 use crate::response::{
     cpe::{NvdCpeResponse, NvdProduct},
     cve::{NvdCveResponse, NvdVulnerability},
+    epss::{EpssEntry, EpssResponse},
     github::GitHubIssue,
     osv::{OsvExtracted, OsvResponse},
 };
@@ -19,6 +21,7 @@ pub struct LiztClient {
     nvd_limiter: RateLimiter,
     github_limiter: RateLimiter,
     osv_limiter: RateLimiter,
+    epss_limiter: RateLimiter,
     nvd_key: Option<String>,
     github_token: Option<String>,
 }
@@ -41,6 +44,7 @@ impl LiztClient {
             nvd_limiter: RateLimiter::nvd(nvd_api_key.is_some()),
             github_limiter: RateLimiter::github(github_token.is_some()),
             osv_limiter: RateLimiter::osv(),
+            epss_limiter: RateLimiter::epss(),
         }
     }
 
@@ -301,6 +305,49 @@ impl LiztClient {
 
         error!("Max retries reached for GitHub issue {}", issue_url);
         None
+    }
+
+    pub async fn request_epss_batch(&self, cve_ids: &[&str]) -> Vec<EpssEntry> {
+        let mut all_entries = Vec::new();
+
+        for chunk in cve_ids.chunks(100) {
+            self.epss_limiter.acquire().await;
+            let cve_param = chunk.join(",");
+
+            for attempt in 0..MAX_RETRIES {
+                let request = self.client.get(EPSS_ENDPOINT).query(&[("cve", &cve_param)]);
+
+                debug!("Sending EPSS batch request for {} CVEs", chunk.len());
+                match request.send().await {
+                    Ok(resp)
+                        if resp.status() == reqwest::StatusCode::FORBIDDEN
+                            || resp.status() == reqwest::StatusCode::TOO_MANY_REQUESTS =>
+                    {
+                        if attempt + 1 == MAX_RETRIES {
+                            break;
+                        }
+                        tokio::time::sleep(Duration::from_secs(30)).await;
+                    }
+                    Ok(resp) if resp.status().is_success() => {
+                        match resp.json::<EpssResponse>().await {
+                            Ok(data) => all_entries.extend(data.data),
+                            Err(e) => error!("Error parsing EPSS response: {}", e),
+                        }
+                        break;
+                    }
+                    Ok(resp) => {
+                        error!("Failed to fetch EPSS data: {}", resp.status());
+                        break;
+                    }
+                    Err(e) => {
+                        error!("Error fetching EPSS data: {}", e);
+                        break;
+                    }
+                }
+            }
+        }
+
+        all_entries
     }
 
     pub async fn request_osv(&self, cve_id: &str) -> Option<OsvExtracted> {

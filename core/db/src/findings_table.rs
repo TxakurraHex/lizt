@@ -2,6 +2,7 @@ use crate::rows::finding_summary_rows::FindingSummaryRow;
 use common::finding_record::FindingRecord;
 use common::finding_summary::FindingSummary;
 use sqlx::PgPool;
+use uuid::Uuid;
 
 pub async fn insert_findings(pool: &PgPool, findings: &[FindingRecord]) -> Result<(), sqlx::Error> {
     for f in findings {
@@ -22,6 +23,52 @@ pub async fn insert_findings(pool: &PgPool, findings: &[FindingRecord]) -> Resul
     Ok(())
 }
 
+pub async fn update_symbol_flags(pool: &PgPool, scan_id: &Uuid) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query(
+        r#"
+        UPDATE findings f SET
+            symbol_present = EXISTS (
+                SELECT 1 FROM cve_symbols cs
+                WHERE cs.cve_id = f.cve_id AND cs.validated = true
+            ),
+            symbol_called = EXISTS (
+                SELECT 1 FROM cve_symbols cs
+                JOIN symbol_observations so ON so.cve_symbol_id = cs.id
+                WHERE cs.cve_id = f.cve_id AND cs.validated = true
+            ),
+            updated_at = NOW()
+        WHERE f.scan_id = $1
+        "#,
+    )
+    .bind(scan_id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}
+
+pub async fn compute_rank_scores(pool: &PgPool, scan_id: &Uuid) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query(
+        r#"
+        UPDATE findings f SET
+            rank_score = compute_rank_score(
+                f.cvss_score,
+                cv.epss_score,
+                f.kev_listed,
+                COALESCE(f.symbol_called, false),
+                COALESCE(f.symbol_present, false)
+            ),
+            updated_at = NOW()
+        FROM cves cv
+        WHERE cv.cve_id = f.cve_id
+          AND f.scan_id = $1
+        "#,
+    )
+    .bind(scan_id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}
+
 pub async fn get_finding_summaries(pool: &PgPool) -> Result<Vec<FindingSummary>, sqlx::Error> {
     sqlx::query_as::<_, FindingSummaryRow>(
         r#"
@@ -37,7 +84,8 @@ pub async fn get_finding_summaries(pool: &PgPool) -> Result<Vec<FindingSummary>,
             f.kev_listed,
             f.symbol_present,
             f.symbol_called,
-            f.rank_score
+            f.rank_score,
+            cv.epss_score
         FROM findings f
         JOIN cpes c ON c.id = f.cpe_id
         JOIN cves cv ON cv.cve_id = f.cve_id

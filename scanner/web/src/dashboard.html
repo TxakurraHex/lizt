@@ -614,9 +614,9 @@
         function rankBadge(r) {
             if (r == null) return '<span class="badge badge-none">unranked</span>';
             const v = parseFloat(r).toFixed(1);
-            if (r >= 8) return `<span class="badge badge-critical">${v}</span>`;
-            if (r >= 5) return `<span class="badge badge-high">${v}</span>`;
-            if (r >= 2) return `<span class="badge badge-medium">${v}</span>`;
+            if (r >= 25) return `<span class="badge badge-critical">${v}</span>`;
+            if (r >= 12) return `<span class="badge badge-high">${v}</span>`;
+            if (r >= 5) return `<span class="badge badge-medium">${v}</span>`;
             return `<span class="badge badge-low">${v}</span>`;
         }
 

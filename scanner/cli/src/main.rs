@@ -150,7 +150,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Commands::Rank => {
-            info!("Rank not yet implemented");
+            let scan_id = match db::scans_table::get_latest_scan_id(&pool).await? {
+                Some(id) => id,
+                None => {
+                    error!("No scans found. Run a scan first.");
+                    return Ok(());
+                }
+            };
+            info!("Recomputing rankings for scan {scan_id}...");
+
+            let flags = db::findings_table::update_symbol_flags(&pool, &scan_id).await?;
+            let ranks = db::findings_table::compute_rank_scores(&pool, &scan_id).await?;
+            info!("Updated {flags} symbol flags, recomputed {ranks} rank scores.");
         }
 
         Commands::Reset { confirm } => {

@@ -33,6 +33,16 @@ impl RateLimiter {
         }
     }
 
+    pub fn epss() -> Self {
+        Self {
+            name: "epss",
+            requests: Mutex::new(VecDeque::new()),
+            max_requests: 30,
+            window: Duration::from_secs(60),
+            waiters: AtomicUsize::new(0),
+        }
+    }
+
     pub fn osv() -> Self {
         Self {
             name: "osv",

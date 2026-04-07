@@ -1,3 +1,4 @@
+use common::cpe::Cpe;
 use common::cve::Cve;
 use common::finding_record::FindingRecord;
 use common::resolved_symbol::SymbolIndex;
@@ -16,6 +17,7 @@ use io_symbols::{
     scrapers::{description::DescriptionScraper, github::GithubScraper, osv::OsvScraper},
 };
 use log::{debug, error, info};
+use rust_decimal::Decimal;
 use sqlx::PgPool;
 use std::{collections::HashMap, sync::Arc};
 use thiserror::Error;
@@ -57,6 +59,8 @@ pub enum ScanStage {
     SymbolExtraction,
     SymbolValidation,
     Persisting,
+    EpssFetch,
+    Ranking,
 }
 
 impl std::fmt::Display for ScanStage {
@@ -68,6 +72,8 @@ impl std::fmt::Display for ScanStage {
             ScanStage::SymbolExtraction => write!(f, "symbol_extraction"),
             ScanStage::SymbolValidation => write!(f, "symbol_validation"),
             ScanStage::Persisting => write!(f, "persisting"),
+            ScanStage::EpssFetch => write!(f, "epss_fetch"),
+            ScanStage::Ranking => write!(f, "ranking"),
         }
     }
 }
@@ -288,6 +294,9 @@ async fn execute(
             source: e.into(),
         })?;
 
+    // Collect CVE IDs before cves is moved into extract_symbols
+    let cve_ids: Vec<String> = cves.iter().map(|c| c.id.clone()).collect();
+
     // Stage 4: symbol extraction
     emit(
         events,
@@ -335,6 +344,57 @@ async fn execute(
             })?;
     }
 
+    // Stage 6: EPSS fetch
+    let cve_id_refs: Vec<&str> = cve_ids.iter().map(|s| s.as_str()).collect();
+    if !cve_id_refs.is_empty() {
+        emit(
+            events,
+            ScanStage::EpssFetch,
+            format!("Fetching EPSS scores for {} CVEs...", cve_id_refs.len()),
+        );
+        info!("Fetching EPSS scores for {} CVEs...", cve_id_refs.len());
+
+        let epss_entries = client.request_epss_batch(&cve_id_refs).await;
+        let epss_scores: Vec<(String, Decimal, Decimal)> = epss_entries
+            .into_iter()
+            .filter_map(|e| {
+                let score = Decimal::try_from(e.epss).ok()?;
+                let percentile = Decimal::try_from(e.percentile).ok()?;
+                Some((e.cve, score, percentile))
+            })
+            .collect();
+
+        let updated = db::cve_tables::update_epss_scores(pool, &epss_scores)
+            .await
+            .map_err(|e| PipelineError::Stage {
+                stage: "epss_fetch",
+                source: e.into(),
+            })?;
+        info!("Updated EPSS scores for {updated} CVEs");
+    }
+
+    // Stage 7: Rank computation
+    emit(
+        events,
+        ScanStage::Ranking,
+        "Computing vulnerability rankings...",
+    );
+    info!("Computing vulnerability rankings...");
+
+    let flags_updated = db::findings_table::update_symbol_flags(pool, &scan.id)
+        .await
+        .map_err(|e| PipelineError::Stage {
+            stage: "ranking",
+            source: e.into(),
+        })?;
+    let ranks_updated = db::findings_table::compute_rank_scores(pool, &scan.id)
+        .await
+        .map_err(|e| PipelineError::Stage {
+            stage: "ranking",
+            source: e.into(),
+        })?;
+    info!("Updated {flags_updated} symbol flags, computed {ranks_updated} rank scores");
+
     Ok(())
 }
 
@@ -352,8 +412,16 @@ async fn fetch_cves(
                 .into_iter()
                 .map(|v| Cve::from(v.cve))
                 .collect();
-            let associations: Vec<(Uuid, String)> =
-                cves.iter().map(|c| (*cpe_uuid, c.id.clone())).collect();
+            let installed = Cpe::from_cpe_string(cpe_string);
+            let associations: Vec<(Uuid, String)> = cves
+                .iter()
+                .filter(|cve| match installed.version.as_deref() {
+                    Some(ver) => cve.affects_version(&installed.vendor, &installed.product, ver),
+                    None => true,
+                })
+                .map(|c| (*cpe_uuid, c.id.clone()))
+                .collect();
+
             (cves, associations)
         }))
         .await;

@@ -41,6 +41,12 @@ pub async fn set_fixture_name(
     Ok(())
 }
 
+pub async fn get_latest_scan_id(pool: &PgPool) -> Result<Option<Uuid>, sqlx::Error> {
+    sqlx::query_scalar::<_, Uuid>("SELECT id FROM scans ORDER BY started_at DESC LIMIT 1")
+        .fetch_optional(pool)
+        .await
+}
+
 pub async fn get_scans(pool: &PgPool) -> Result<Vec<Scan>, sqlx::Error> {
     sqlx::query_as::<_, Scan>("SELECT * FROM scans")
         .fetch_all(pool)

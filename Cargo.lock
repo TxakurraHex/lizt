@@ -1966,6 +1966,7 @@ dependencies = [
  "io-nvd",
  "io-symbols",
  "log",
+ "rust_decimal",
  "sqlx",
  "thiserror 2.0.18",
  "tokio",

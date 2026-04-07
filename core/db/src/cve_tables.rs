@@ -1,5 +1,6 @@
 use crate::rows::cve_rows::{CveRow, CveWithKevRow};
 use common::cve::Cve;
+use rust_decimal::Decimal;
 use sqlx::PgPool;
 
 pub async fn upsert_cve(pool: &PgPool, cve: &Cve) -> Result<(), sqlx::Error> {
@@ -26,6 +27,24 @@ pub async fn upsert_cve(pool: &PgPool, cve: &Cve) -> Result<(), sqlx::Error> {
     .await?;
 
     Ok(())
+}
+
+pub async fn update_epss_scores(
+    pool: &PgPool,
+    scores: &[(String, Decimal, Decimal)],
+) -> Result<u64, sqlx::Error> {
+    let mut updated = 0u64;
+    for (cve_id, epss, percentile) in scores {
+        let result =
+            sqlx::query("UPDATE cves SET epss_score = $1, epss_percentile = $2 WHERE cve_id = $3")
+                .bind(epss)
+                .bind(percentile)
+                .bind(cve_id)
+                .execute(pool)
+                .await?;
+        updated += result.rows_affected();
+    }
+    Ok(updated)
 }
 
 pub async fn get_all_cves(pool: &PgPool) -> Result<Vec<Cve>, Box<dyn std::error::Error>> {
@@ -69,6 +88,8 @@ pub async fn get_cve_with_kev(
                 cvss_score: row.cvss_score,
                 cvss_vector: row.cvss_vector,
                 cvss_version: row.cvss_version,
+                epss_score: None,
+                epss_percentile: None,
                 cpes: None,
             };
             (cve, row.kev_listed)
