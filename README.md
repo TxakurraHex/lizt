@@ -7,6 +7,12 @@ inventory, maps it to CPE entries, queries the NVD API for CVEs, extracts vulner
 symbols from CVE data, and monitors process runtime behavior via eBPF to determine which
 vulnerabilities are actually reachable.
 
+### Why "lizt"?
+
+*Liztor* is the Basque word for "wasp"; a tip of the hat to Georgia Tech's Yellow Jacket.
+It also sounds a lot like "list", which is what this tool does: lists your vulnerabilities,
+stings the ones that matter, and ignores the rest.
+
 ## How It Works
 
 ```
