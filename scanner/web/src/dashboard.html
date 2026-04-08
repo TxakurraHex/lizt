@@ -94,8 +94,14 @@
             font-weight: 600;
         }
 
-        #refresh-btn {
+        .header-actions {
             margin-left: auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        #refresh-btn, .export-dropdown > button {
             background: none;
             border: 1px solid var(--border);
             color: var(--muted);
@@ -107,8 +113,43 @@
             transition: border-color .15s, color .15s;
         }
 
-        #refresh-btn:hover {
+        #refresh-btn:hover, .export-dropdown > button:hover {
             border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .export-dropdown {
+            position: relative;
+        }
+
+        .export-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 4px);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            z-index: 20;
+            min-width: 140px;
+        }
+
+        .export-menu.open {
+            display: block;
+        }
+
+        .export-menu a {
+            display: block;
+            padding: 8px 14px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 12px;
+            transition: background .15s;
+        }
+
+        .export-menu a:hover {
+            background: rgba(201, 168, 0, .12);
             color: var(--accent);
         }
 
@@ -523,7 +564,16 @@
                 <button onclick="switchTab('symbols')">Symbols</button>
                 <button onclick="switchTab('scan')">Scan</button>
             </nav>
-            <button id="refresh-btn" onclick="reload()">↺ Refresh</button>
+            <div class="header-actions">
+                <div class="export-dropdown">
+                    <button onclick="toggleExportMenu(event)">↓ Export</button>
+                    <div class="export-menu" id="export-menu">
+                        <a href="/api/report?format=json" download="lizt-report.json">Download JSON</a>
+                        <a href="/api/report?format=csv" download="lizt-report.csv">Download CSV</a>
+                    </div>
+                </div>
+                <button id="refresh-btn" onclick="reload()">↺ Refresh</button>
+            </div>
         </header>
         <main id="main-content">
             <div class="state-msg">Loading…</div>
@@ -543,6 +593,14 @@
         let currentTab = 'findings';
         let cache = {};
         let scanEvtSource = null; // active EventSource, if any
+
+        function toggleExportMenu(e) {
+            e.stopPropagation();
+            document.getElementById('export-menu').classList.toggle('open');
+        }
+        document.addEventListener('click', () => {
+            document.getElementById('export-menu').classList.remove('open');
+        });
 
         // ─────────────────────────────────────────────
         // Routing

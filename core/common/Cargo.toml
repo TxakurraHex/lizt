@@ -11,3 +11,5 @@ uuid = { workspace = true }
 sqlx = { workspace = true }
 rust_decimal = { workspace = true }
 log = { workspace = true }
+serde_json = { workspace = true }
+csv = { workspace = true }

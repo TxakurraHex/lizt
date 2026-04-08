@@ -96,3 +96,4 @@ tracing = "0.1"
 # CLI
 clap = { version = "4", features = ["derive"] }
 inquire = "0.7"
+csv = "1"

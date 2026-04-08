@@ -56,6 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/scan/{id}", get(api::scan::get_by_id))
         // REST API
         .route("/api/findings", get(api::findings::list))
+        .route("/api/report", get(api::report::download))
         .route("/api/cve/{cve_id}", get(api::cve::detail))
         .route("/api/observation", get(api::observations::list))
         .route("/api/inventory", get(api::inventory::list))

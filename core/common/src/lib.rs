@@ -5,6 +5,7 @@ pub mod finding_summary;
 pub mod github_issue;
 pub mod inventory_entry;
 pub mod process_runner;
+pub mod report;
 pub mod resolved_symbol;
 pub mod scan;
 pub mod symbol;

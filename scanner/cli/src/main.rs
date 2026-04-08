@@ -36,6 +36,15 @@ enum Commands {
         #[arg(long)]
         confirm: bool,
     },
+    /// Export findings as JSON or CSV
+    Export {
+        /// Output format: json or csv
+        #[arg(long, default_value = "json")]
+        format: String,
+        /// Output file path (defaults to stdout)
+        #[arg(long, short)]
+        output: Option<PathBuf>,
+    },
     /// Interactively set NVD_API_KEY and GITHUB_TOKEN
     Configure,
 }
@@ -179,6 +188,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             info!("Database reset.");
         }
 
+        Commands::Export { format, output } => {
+            let findings = db::findings_table::get_all_finding_summaries(&pool).await?;
+            let bytes = match format.as_str() {
+                "csv" => common::report::to_csv(&findings)
+                    .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?,
+                _ => common::report::to_json(&findings)
+                    .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?,
+            };
+            match output {
+                Some(path) => {
+                    std::fs::write(&path, &bytes)?;
+                    info!("Report written to {}", path.display());
+                }
+                None => {
+                    use std::io::Write;
+                    std::io::stdout().write_all(&bytes)?;
+                }
+            }
+        }
+
         Commands::Configure => run_configure()?,
     }
 
@@ -196,13 +225,14 @@ fn interactive_menu() -> Result<MenuSelection, Box<dyn std::error::Error>> {
     const SCAN: &str = "Scan       — run full vulnerability scan";
     const EVAL: &str = "Eval       — run scan against an evaluation fixture";
     const RANK: &str = "Rank       — generate vulnerability rankings";
+    const EXPORT: &str = "Export     — download findings as JSON or CSV";
     const CONFIGURE: &str = "Configure  — update API keys and settings";
     const RESET: &str = "Reset      — clear the database";
     const QUIT: &str = "Quit";
 
     let choice = match Select::new(
         "What would you like to do?",
-        vec![SCAN, EVAL, RANK, CONFIGURE, RESET, QUIT],
+        vec![SCAN, EVAL, RANK, EXPORT, CONFIGURE, RESET, QUIT],
     )
     .prompt()
     {
@@ -226,6 +256,21 @@ fn interactive_menu() -> Result<MenuSelection, Box<dyn std::error::Error>> {
             })
         }
         RANK => MenuSelection::Run(Commands::Rank),
+        EXPORT => {
+            let format = Select::new("Output format:", vec!["json", "csv"]).prompt()?;
+            let path = Text::new("Output file path (leave blank for stdout):")
+                .with_default("")
+                .prompt()?;
+            let output = if path.is_empty() {
+                None
+            } else {
+                Some(PathBuf::from(path))
+            };
+            MenuSelection::Run(Commands::Export {
+                format: format.to_string(),
+                output,
+            })
+        }
         CONFIGURE => MenuSelection::Run(Commands::Configure),
         RESET => MenuSelection::Run(Commands::Reset { confirm: false }),
         QUIT => MenuSelection::Quit,
