@@ -83,14 +83,38 @@ pub async fn get_finding_summaries(pool: &PgPool) -> Result<Vec<FindingSummary>,
             f.cvss_score,
             cv.cvss_version,
             f.kev_listed,
-            f.symbol_present,
-            f.symbol_called,
-            f.rank_score,
-            cv.epss_score
+            EXISTS (
+                SELECT 1 FROM cve_symbols cs
+                WHERE cs.cve_id = f.cve_id AND cs.validated = true
+            ) AS symbol_present,
+            EXISTS (
+                SELECT 1 FROM cve_symbols cs
+                JOIN symbol_observations so ON so.cve_symbol_id = cs.id
+                WHERE cs.cve_id = f.cve_id AND cs.validated = true
+            ) AS symbol_called,
+            compute_rank_score(
+                f.cvss_score,
+                cv.epss_score,
+                f.kev_listed,
+                EXISTS (
+                    SELECT 1 FROM cve_symbols cs
+                    JOIN symbol_observations so ON so.cve_symbol_id = cs.id
+                    WHERE cs.cve_id = f.cve_id AND cs.validated = true
+                ),
+                EXISTS (
+                    SELECT 1 FROM cve_symbols cs
+                    WHERE cs.cve_id = f.cve_id AND cs.validated = true
+                )
+            ) AS rank_score,
+            cv.epss_score,
+            (SELECT COUNT(*) FROM cve_symbols cs
+             JOIN symbol_observations so ON so.cve_symbol_id = cs.id
+             WHERE cs.cve_id = f.cve_id AND cs.validated = true
+            ) AS symbols_called_count
         FROM findings f
         JOIN cpes c ON c.id = f.cpe_id
         JOIN cves cv ON cv.cve_id = f.cve_id
-        ORDER BY f.rank_score DESC NULLS LAST
+        ORDER BY rank_score DESC NULLS LAST
         LIMIT 500
         "#,
     )
@@ -113,14 +137,38 @@ pub async fn get_all_finding_summaries(pool: &PgPool) -> Result<Vec<FindingSumma
             f.cvss_score,
             cv.cvss_version,
             f.kev_listed,
-            f.symbol_present,
-            f.symbol_called,
-            f.rank_score,
-            cv.epss_score
+            EXISTS (
+                SELECT 1 FROM cve_symbols cs
+                WHERE cs.cve_id = f.cve_id AND cs.validated = true
+            ) AS symbol_present,
+            EXISTS (
+                SELECT 1 FROM cve_symbols cs
+                JOIN symbol_observations so ON so.cve_symbol_id = cs.id
+                WHERE cs.cve_id = f.cve_id AND cs.validated = true
+            ) AS symbol_called,
+            compute_rank_score(
+                f.cvss_score,
+                cv.epss_score,
+                f.kev_listed,
+                EXISTS (
+                    SELECT 1 FROM cve_symbols cs
+                    JOIN symbol_observations so ON so.cve_symbol_id = cs.id
+                    WHERE cs.cve_id = f.cve_id AND cs.validated = true
+                ),
+                EXISTS (
+                    SELECT 1 FROM cve_symbols cs
+                    WHERE cs.cve_id = f.cve_id AND cs.validated = true
+                )
+            ) AS rank_score,
+            cv.epss_score,
+            (SELECT COUNT(*) FROM cve_symbols cs
+             JOIN symbol_observations so ON so.cve_symbol_id = cs.id
+             WHERE cs.cve_id = f.cve_id AND cs.validated = true
+            ) AS symbols_called_count
         FROM findings f
         JOIN cpes c ON c.id = f.cpe_id
         JOIN cves cv ON cv.cve_id = f.cve_id
-        ORDER BY f.rank_score DESC NULLS LAST
+        ORDER BY rank_score DESC NULLS LAST
         "#,
     )
     .fetch_all(pool)

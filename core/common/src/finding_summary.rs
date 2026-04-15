@@ -18,4 +18,5 @@ pub struct FindingSummary {
     pub symbol_called: Option<bool>,
     pub rank_score: Option<Decimal>,
     pub epss_score: Option<Decimal>,
+    pub symbols_called_count: i64,
 }
