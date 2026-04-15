@@ -593,6 +593,7 @@
         let currentTab = 'findings';
         let cache = {};
         let scanEvtSource = null; // active EventSource, if any
+        let pollTimer = null;     // auto-refresh interval for the active tab
 
         function toggleExportMenu(e) {
             e.stopPropagation();
@@ -614,7 +615,27 @@
             cache = {};
             // Leave the SSE connection open when switching away from Scan —
             // it will close itself on Complete/Failed.
+            startPoll(tab);
             reload();
+        }
+
+        function startPoll(tab) {
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+            if (tab === 'findings' || tab === 'observations') {
+                pollTimer = setInterval(() => refreshData(), 5000);
+            }
+        }
+
+        async function refreshData() {
+            try {
+                if (currentTab === 'findings' && document.getElementById('findings-body')) {
+                    cache.findings = await fetchJSON('/api/findings');
+                    applyFindingsFilter();
+                } else if (currentTab === 'observations' && document.getElementById('obs-body')) {
+                    cache.observations = await fetchJSON('/api/observation');
+                    applyObsFilter();
+                }
+            } catch (_) { /* silent — next poll will retry */ }
         }
 
         function reload() {
@@ -714,7 +735,7 @@
 
                 const critical = data.filter(r => r.cvss_score >= 9).length;
                 const high = data.filter(r => r.cvss_score >= 7 && r.cvss_score < 9).length;
-                const kev = data.filter(r => r.kev_listed).length;
+                const present = data.filter(r => r.symbol_present).length;
                 const called = data.filter(r => r.symbol_called).length;
 
                 document.getElementById('main-content').innerHTML = `
@@ -722,7 +743,7 @@
         <div class="stat-box"><div class="label">Total Findings</div><div class="value" id="findings-total">${data.length}</div></div>
         <div class="stat-box"><div class="label">Critical (9+)</div><div class="value red" id="findings-critical">${critical}</div></div>
         <div class="stat-box"><div class="label">High (7–9)</div><div class="value orange" id="findings-high">${high}</div></div>
-        <div class="stat-box"><div class="label">KEV Listed</div><div class="value red" id="findings-kev">${kev}</div></div>
+        <div class="stat-box"><div class="label">Symbol Validated</div><div class="value" id="findings-present">${present}</div></div>
         <div class="stat-box"><div class="label">Symbol Called</div><div class="value purple" id="findings-called">${called}</div></div>
       </div>
       <div class="card">
@@ -734,7 +755,7 @@
             <thead>
               <tr>
                 <th>Rank</th><th>CVE</th><th>Package</th>
-                <th>CVSS</th><th>KEV</th><th>Symbol</th><th>Version</th>
+                <th>CVSS</th><th>Calls</th><th>Symbol</th><th>Version</th>
               </tr>
             </thead>
             <tbody id="findings-body"></tbody>
@@ -759,7 +780,7 @@
       <td><a class="cve-link" onclick="openDetail('${r.cve_id}')">${r.cve_id}</a></td>
       <td>${r.cpe_product}<br><span style="color:var(--muted);font-size:11px">${r.cpe_name}</span></td>
       <td>${scoreBar(r.cvss_score)}</td>
-      <td>${r.kev_listed ? '<span class="badge badge-kev">KEV</span>' : '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${r.symbols_called_count > 0 ? '<span class="badge badge-kev">' + r.symbols_called_count + '</span>' : '<span style="color:var(--muted)">—</span>'}</td>
       <td>${symbolBadge(r.symbol_called, r.symbol_present)}</td>
       <td style="color:var(--muted);font-size:12px">${r.cvss_version || '—'}</td>
     </tr>
@@ -769,7 +790,7 @@
             element('findings-total').textContent = rows.length;
             element('findings-critical').textContent = rows.filter(r => r.cvss_score >= 9).length;
             element('findings-high').textContent = rows.filter(r => r.cvss_score >= 7 & r.cvss_score <9).length;
-            element('findings-kev').textContent = rows.filter(r => r.kev_listed).length;
+            element('findings-present').textContent = rows.filter(r => r.symbol_present).length;
             element('findings-called').textContent = rows.filter(r => r.symbol_called).length;
         }
 
@@ -1310,6 +1331,7 @@
         // ─────────────────────────────────────────────
         // Boot
         // ─────────────────────────────────────────────
+        startPoll(currentTab);
         reload();
     </script>
 </body>
