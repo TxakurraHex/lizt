@@ -63,39 +63,70 @@ pub async fn spawn_monitor(pool: PgPool, mut scan_rx: broadcast::Receiver<ScanEv
         return;
     }
 
-    let mut handle = match reload(&pool).await {
-        Ok(h) => h,
+    let mut handle: Option<JoinHandle<Result<()>>> = match reload(&pool).await {
+        Ok(h) => Some(h),
         Err(e) => {
-            error!("Monitor failed to start: {e:#}");
-            return;
+            warn!("Initial probe load failed (will retry on next scan): {e:#}");
+            None
         }
     };
 
     loop {
-        tokio::select! {
-            result = &mut handle => {
-                error!("Monitor observer exited unexpectedly: {result:?}");
-                return;
-            }
-            event = scan_rx.recv() => {
-                match event {
-                    Ok(ScanEvent::Complete { .. }) => {
-                        info!("Scan complete — reloading eBPF probes");
-                        handle.abort();
-                        let _ = handle.await;
-                        match reload(&pool).await {
-                            Ok(h) => handle = h,
-                            Err(e) => {
-                                error!("Failed to reload probes: {e:#}");
-                                return;
-                            }
+        match &mut handle {
+            Some(h) => {
+                tokio::select! {
+                    result = h => {
+                        match result {
+                            Ok(Ok(())) => info!("Monitor observer finished (no probes active)"),
+                            Ok(Err(e)) => warn!("Monitor observer error: {e:#}"),
+                            Err(e) => warn!("Monitor observer task failed: {e}"),
+                        }
+                        handle = None;
+                    }
+                    event = scan_rx.recv() => {
+                        if let Some(new_handle) = handle_event(event, &mut handle, &pool).await {
+                            handle = Some(new_handle);
                         }
                     }
-                    Err(broadcast::error::RecvError::Closed) => return,
-                    _ => {}
+                }
+            }
+            None => {
+                let event = scan_rx.recv().await;
+                if let Some(new_handle) = handle_event(event, &mut handle, &pool).await {
+                    handle = Some(new_handle);
                 }
             }
         }
+    }
+}
+
+/// Process a scan event. Returns a new observer handle on successful reload,
+/// or `None` if no reload was needed or reload failed.
+async fn handle_event(
+    event: Result<ScanEvent, broadcast::error::RecvError>,
+    handle: &mut Option<JoinHandle<Result<()>>>,
+    pool: &PgPool,
+) -> Option<JoinHandle<Result<()>>> {
+    match event {
+        Ok(ScanEvent::Complete { .. }) => {
+            info!("Scan complete — reloading eBPF probes");
+            if let Some(h) = handle.take() {
+                h.abort();
+                let _ = h.await;
+            }
+            match reload(pool).await {
+                Ok(h) => Some(h),
+                Err(e) => {
+                    error!("Failed to reload probes: {e:#}");
+                    None
+                }
+            }
+        }
+        Err(broadcast::error::RecvError::Closed) => {
+            info!("Scan channel closed — monitor shutting down");
+            std::process::exit(0);
+        }
+        _ => None,
     }
 }
 
