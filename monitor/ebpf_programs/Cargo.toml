@@ -4,6 +4,7 @@
 name = "ebpf_programs"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 
 [dependencies]
 aya-ebpf = "0.1"
