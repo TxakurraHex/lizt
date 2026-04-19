@@ -1,3 +1,6 @@
+pub mod paths;
+pub mod verify;
+
 use std::env;
 use std::fs;
 use std::io::Write;
@@ -26,18 +29,41 @@ fn workspace_root() -> PathBuf {
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let release = args.iter().any(|a| a == "--release");
+
+    let mut json_out: PathBuf = PathBuf::from("/tmp/lizt-verify.json");
+    let mut skip_next = false;
+
     let positional: Vec<&str> = args
         .iter()
+        .enumerate()
         .skip(1)
-        .filter(|a| *a != "--release")
-        .map(String::as_str)
+        .filter_map(|(i, a)| {
+            if skip_next {
+                skip_next = false;
+                return None;
+            }
+            if a == "--json-out" {
+                if let Some(next) = args.get(i + 1) {
+                    json_out = PathBuf::from(next);
+                    skip_next = true;
+                }
+                return None;
+            }
+            if a == "--release" {
+                return None;
+            }
+            Some(a.as_str())
+        })
         .collect();
 
     match positional.as_slice() {
         ["install"] => install(release),
         ["uninstall"] => uninstall(),
+        ["verify"] => verify::verify(&json_out),
         _ => {
-            eprintln!("Usage: cargo xtask <install|uninstall> [--release]");
+            eprintln!(
+                "Usage: cargo xtask <install|uninstall|verify> [--release] [--json-out <path>]"
+            );
             std::process::exit(1);
         }
     }
@@ -53,6 +79,7 @@ fn install(release: bool) -> Result<()> {
     install_binary(&root, profile(release), "lizt-cli")?;
     ensure_lizt_user()?;
     setup_log_dir()?;
+    create_dir_all(CONF_DIR)?;
     install_env_web()?;
     copy_conf(
         &root.join("scanner/web/conf/log4rs.yaml"),
@@ -123,7 +150,8 @@ fn install_env_web() -> Result<()> {
         fs::write(
             &dst,
             "DATABASE_URL=postgresql://user:password@localhost/lizt\nLIZT_WEB_PORT=8080\n# NVD_API_KEY=\n",
-        )?;
+        )
+            .with_context(|| format!("Failed to write env var: {}", dst.display()))?;
         set_permissions(&dst, 0o600)?;
         println!(
             "Created {}, edit DATABASE_URL and NVD_API_KEY",
