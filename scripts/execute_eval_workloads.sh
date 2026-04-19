@@ -30,10 +30,12 @@ mkdir -p "$WORKLOAD_DIR"
 
 build_workloads() {
 	echo " Compiling workloads "
+	SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+	SRC_DIR="$SCRIPT_DIR/../eval_workloads"
 
 	# zlib
 	gcc -o "$WORKLOAD_DIR/workload_zlib" \
-		"$WORKLOAD_DIR/workload_zlib.c" \
+		"$SRC_DIR/workload_zlib.c" \
 		-I"$VULN_PREFIX/include" \
 		-L"$VULN_PREFIX/lib" \
 		-lz \
@@ -42,7 +44,7 @@ build_workloads() {
 
 	# OpenSSL
 	gcc -o "$WORKLOAD_DIR/workload_openssl" \
-		"$WORKLOAD_DIR/workload_openssl.c" \
+		"$SRC_DIR/workload_openssl.c" \
 		-I"$VULN_PREFIX/include" \
 		-L"$VULN_PREFIX/lib" \
 		-lssl -lcrypto \
@@ -52,7 +54,7 @@ build_workloads() {
 
 	# libexpat
 	gcc -o "$WORKLOAD_DIR/workload_expat" \
-		"$WORKLOAD_DIR/workload_expat.c" \
+		"$SRC_DIR/workload_expat.c" \
 		-I"$VULN_PREFIX/include" \
 		-L"$VULN_PREFIX/lib" \
 		-lexpat \
