@@ -255,7 +255,6 @@ fn install_migrations(root: &Path) -> Result<()> {
 fn install_systemd_unit(src: &Path) -> Result<()> {
     let dst = Path::new(SYSTEMD_DIR).join(src.file_name().expect("unit file has a name"));
     copy_file_if_changed(src, &dst)?;
-    set_permissions(&dst, 0o644)?;
     run("systemctl", &["daemon-reload"])
 }
 
@@ -294,6 +293,7 @@ fn copy_conf(src: &Path, dest_dir: &str, filename: &str) -> Result<()> {
     copy_file_if_changed(src, &Path::new(dest_dir).join(filename))
 }
 
+
 fn remove_files(paths: &[&str]) -> Result<()> {
     for path in paths {
         if Path::new(path).exists() {
@@ -329,9 +329,11 @@ fn copy_file_if_changed(src: &Path, dst: &Path) -> Result<()> {
     }
     fs::copy(src, dst)
         .with_context(|| format!("Failed to copy {} -> {}", src.display(), dst.display()))?;
+    set_permissions(dst, 0o644)?;   // ← new: sensible default for non-executable files
     println!("Installed: {}", dst.display());
     Ok(())
 }
+
 
 fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {
     fs::create_dir_all(dst)?;
