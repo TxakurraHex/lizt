@@ -23,7 +23,7 @@
 set -euo pipefail
 
 OPENSSL_VERSION="1.1.1f"
-OPENSSL_SHA256="186c6bfe6ecfba7a5b48c47f8a1673d0f3b0e5ba2e25602dd23b629571b603db"
+OPENSSL_SHA256="186c6bfe6ecfba7a5b48c47f8a1673d0f3b0e5ba2e25602dd23b629975da3f35"
 PREFIX="/opt/vulnerable"
 BUILD_DIR="$(mktemp -d)"
 

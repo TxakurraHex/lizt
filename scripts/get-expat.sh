@@ -24,7 +24,7 @@ set -euo pipefail
 
 EXPAT_VERSION="2.2.9"
 EXPAT_TAG="R_2_2_9"
-EXPAT_SHA256="c341ac8c79e021c3b9f2e3e74f5aca6482e28073e0d68b4850c3230c28e2672e"
+EXPAT_SHA256="4456e0aa72ecc7e1d4b3368cd545a5eec7f9de5133a8dc37fdb1efa6174c4947"
 PREFIX="/opt/vulnerable"
 BUILD_DIR="$(mktemp -d)"
 
