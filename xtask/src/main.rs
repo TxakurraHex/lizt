@@ -75,6 +75,11 @@ fn install(release: bool) -> Result<()> {
     require_root()?;
     let root = workspace_root();
 
+    // Stop the service before overwriting the binary. This makes reinstalls
+    // reliable over running services. `.ok()` so a first-time install (where
+    // the service doesn't exist yet) doesn't fail.
+    run("systemctl", &["stop", "lizt"]).ok();
+
     install_binary(&root, profile(release), "lizt")?;
     install_binary(&root, profile(release), "lizt-cli")?;
     ensure_lizt_user()?;
@@ -271,6 +276,15 @@ fn install_binary(root: &Path, profile: &str, name: &str) -> Result<()> {
 
 fn install_binary_from(src: &Path, name: &str) -> Result<()> {
     let dst = Path::new(BIN_DIR).join(name);
+
+    // If the destination is a currently-running binary, fs::copy fails with
+    // ETXTBSY. Unlinking first frees the directory entry without affecting the
+    // running process (which keeps its open inode). The new copy creates a
+    // fresh inode that'll be used on next service restart.
+    if dst.exists() {
+        fs::remove_file(&dst)
+            .with_context(|| format!("Failed to unlink existing {}", dst.display()))?;
+    }
     fs::copy(src, &dst).with_context(|| format!("Failed to copy binary to {}", dst.display()))?;
     set_permissions(&dst, 0o755)?;
     println!("Installed: {}", dst.display());
