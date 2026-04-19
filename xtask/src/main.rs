@@ -152,7 +152,6 @@ fn install_env_web() -> Result<()> {
             "DATABASE_URL=postgresql://user:password@localhost/lizt\nLIZT_WEB_PORT=8080\n# NVD_API_KEY=\n",
         )
             .with_context(|| format!("Failed to write env var: {}", dst.display()))?;
-        set_permissions(&dst, 0o600)?;
         println!(
             "Created {}, edit DATABASE_URL and NVD_API_KEY",
             dst.display()
@@ -167,6 +166,9 @@ fn install_env_web() -> Result<()> {
             println!("Skipping env file (already exists): {}", dst.display());
         }
     }
+    // Always enforce 0600 regardless of which branch ran — the file contains
+    // DATABASE_URL credentials and must never be world-readable.
+    set_permissions(&dst, 0o600)?;
     Ok(())
 }
 
