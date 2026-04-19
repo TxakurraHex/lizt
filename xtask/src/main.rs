@@ -1,3 +1,6 @@
+pub mod paths;
+pub mod verify;
+
 use std::env;
 use std::fs;
 use std::io::Write;
@@ -26,18 +29,41 @@ fn workspace_root() -> PathBuf {
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let release = args.iter().any(|a| a == "--release");
+
+    let mut json_out: PathBuf = PathBuf::from("/tmp/lizt-verify.json");
+    let mut skip_next = false;
+
     let positional: Vec<&str> = args
         .iter()
+        .enumerate()
         .skip(1)
-        .filter(|a| *a != "--release")
-        .map(String::as_str)
+        .filter_map(|(i, a)| {
+            if skip_next {
+                skip_next = false;
+                return None;
+            }
+            if a == "--json-out" {
+                if let Some(next) = args.get(i + 1) {
+                    json_out = PathBuf::from(next);
+                    skip_next = true;
+                }
+                return None;
+            }
+            if a == "--release" {
+                return None;
+            }
+            Some(a.as_str())
+        })
         .collect();
 
     match positional.as_slice() {
         ["install"] => install(release),
         ["uninstall"] => uninstall(),
+        ["verify"] => verify::verify(&json_out),
         _ => {
-            eprintln!("Usage: cargo xtask <install|uninstall> [--release]");
+            eprintln!(
+                "Usage: cargo xtask <install|uninstall|verify> [--release] [--json-out <path>]"
+            );
             std::process::exit(1);
         }
     }
@@ -49,10 +75,16 @@ fn install(release: bool) -> Result<()> {
     require_root()?;
     let root = workspace_root();
 
+    // Stop the service before overwriting the binary. This makes reinstalls
+    // reliable over running services. `.ok()` so a first-time install (where
+    // the service doesn't exist yet) doesn't fail.
+    run("systemctl", &["stop", "lizt"]).ok();
+
     install_binary(&root, profile(release), "lizt")?;
     install_binary(&root, profile(release), "lizt-cli")?;
     ensure_lizt_user()?;
     setup_log_dir()?;
+    create_dir_all(CONF_DIR)?;
     install_env_web()?;
     copy_conf(
         &root.join("scanner/web/conf/log4rs.yaml"),
@@ -123,8 +155,8 @@ fn install_env_web() -> Result<()> {
         fs::write(
             &dst,
             "DATABASE_URL=postgresql://user:password@localhost/lizt\nLIZT_WEB_PORT=8080\n# NVD_API_KEY=\n",
-        )?;
-        set_permissions(&dst, 0o600)?;
+        )
+            .with_context(|| format!("Failed to write env var: {}", dst.display()))?;
         println!(
             "Created {}, edit DATABASE_URL and NVD_API_KEY",
             dst.display()
@@ -139,6 +171,9 @@ fn install_env_web() -> Result<()> {
             println!("Skipping env file (already exists): {}", dst.display());
         }
     }
+    // Always enforce 0600 regardless of which branch ran — the file contains
+    // DATABASE_URL credentials and must never be world-readable.
+    set_permissions(&dst, 0o600)?;
     Ok(())
 }
 
@@ -225,7 +260,6 @@ fn install_migrations(root: &Path) -> Result<()> {
 fn install_systemd_unit(src: &Path) -> Result<()> {
     let dst = Path::new(SYSTEMD_DIR).join(src.file_name().expect("unit file has a name"));
     copy_file_if_changed(src, &dst)?;
-    set_permissions(&dst, 0o644)?;
     run("systemctl", &["daemon-reload"])
 }
 
@@ -242,6 +276,15 @@ fn install_binary(root: &Path, profile: &str, name: &str) -> Result<()> {
 
 fn install_binary_from(src: &Path, name: &str) -> Result<()> {
     let dst = Path::new(BIN_DIR).join(name);
+
+    // If the destination is a currently-running binary, fs::copy fails with
+    // ETXTBSY. Unlinking first frees the directory entry without affecting the
+    // running process (which keeps its open inode). The new copy creates a
+    // fresh inode that'll be used on next service restart.
+    if dst.exists() {
+        fs::remove_file(&dst)
+            .with_context(|| format!("Failed to unlink existing {}", dst.display()))?;
+    }
     fs::copy(src, &dst).with_context(|| format!("Failed to copy binary to {}", dst.display()))?;
     set_permissions(&dst, 0o755)?;
     println!("Installed: {}", dst.display());
@@ -299,6 +342,7 @@ fn copy_file_if_changed(src: &Path, dst: &Path) -> Result<()> {
     }
     fs::copy(src, dst)
         .with_context(|| format!("Failed to copy {} -> {}", src.display(), dst.display()))?;
+    set_permissions(dst, 0o644)?; // ← new: sensible default for non-executable files
     println!("Installed: {}", dst.display());
     Ok(())
 }

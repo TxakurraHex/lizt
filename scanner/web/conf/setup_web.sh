@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Must run as sudo
 
+# superseded by cargo xtask install — kept for reference
+
 # Stop on failure
 set -euo pipefail
 

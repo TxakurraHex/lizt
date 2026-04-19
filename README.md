@@ -64,37 +64,105 @@ The monitor is built into the `lizt` web binary and runs as a background task al
 web server. A single systemd service handles both. Linux kernel 5.8+ is required for BPF
 ring buffer support.
 
-## Prerequisites
+## System Requirements
 
-### Scanner
+### Runtime (installed Lizt)
 
-- Rust toolchain (edition 2024, stable)
-- PostgreSQL
+- Linux kernel 5.8+ (required for BPF ring buffers — check with `uname -r`)
+- x86_64 architecture (arm64 untested)
+- PostgreSQL 15+ reachable from the host (local or remote)
+- ~500 MB disk for binaries and config; plan an additional ~5 GB for
+  PostgreSQL data after initial NVD ingestion, growing with scan history
+- 2 GB RAM minimum, 4 GB recommended
+- `CAP_BPF`, `CAP_PERFMON`, `CAP_SYS_ADMIN`, and `CAP_SYS_RESOURCE`
+  capabilities at runtime (granted automatically by the systemd unit — the
+  service runs as the unprivileged `lizt` user, not root)
 
-### eBPF monitor (additional requirements)
+### Building from source
 
-- Linux kernel 5.8+ (required for BPF ring buffers)
-- Nightly Rust toolchain (`rustup toolchain install nightly`)
-- `rust-src` component (`rustup component add rust-src --toolchain nightly`)
-- `CAP_BPF + CAP_PERFMON + CAP_SYS_RESOURCE` capabilities at runtime (or root)
+- Rust stable + nightly toolchains (nightly is required for the eBPF sub-crate)
+- `rust-src` component on the nightly toolchain
+- `bpf-linker` (`cargo +nightly install bpf-linker --locked`)
+- System packages: `build-essential pkg-config libssl-dev libelf-dev
+  llvm-14 clang-14`
+- ~15 GB free disk for build artifacts; 60 GB recommended for comfort
+- 8 GB RAM and 4+ cores recommended — Rust compilation is memory- and
+  disk-hungry, and `aws-lc-sys`/`rustls` C builds are slow
+- Build takes ~10–15 min on an m8i.xlarge-class instance
 
-## Setup
+### Deploying to a dedicated host (e.g., EC2)
 
-### 1. Configure environment variables
+For a clean Ubuntu 24.04 host, an m8i.xlarge-class instance with a 60 GB
+gp3 EBS volume fits comfortably. If deploying behind a public IP, open
+inbound TCP 443 from trusted addresses for dashboard access.
+
+## Setup (Development)
+
+For running the scanner from source against a local database. If you're
+deploying to a dedicated host as a system service, skip to the
+[Deployment](#deployment) section below — steps 1–3 still apply, then jump
+straight to deployment.
+
+### 1. Install system packages
+
+On a fresh Ubuntu 24.04 host:
 
 ```bash
-export DATABASE_URL="postgres://user:password@localhost/lizt"
-export NVD_API_KEY="your-nvd-api-key"       # Optional — enables 50 req/30s vs 5 req/30s
+sudo apt-get update
+sudo apt-get install -y \
+    build-essential pkg-config libssl-dev libelf-dev \
+    nginx postgresql postgresql-client openssl apache2-utils \
+    llvm-14 clang-14 \
+    git curl
 ```
 
-For the `reset` subcommand only:
+### 2. Install Rust toolchains
 
 ```bash
-export ADMINDB_URL="postgres://admin:password@localhost/postgres"
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source "$HOME/.cargo/env"
+rustup toolchain install nightly
+rustup component add rust-src --toolchain nightly
+cargo +nightly install bpf-linker --locked
+```
+
+### 3. Set up PostgreSQL
+
+```bash
+sudo systemctl enable --now postgresql
+
+sudo -u postgres psql <<'SQL'
+CREATE USER lizt WITH PASSWORD 'CHANGE_ME';
+CREATE DATABASE lizt OWNER lizt;
+SQL
+```
+
+Pick a real password — you'll use it in the `DATABASE_URL` below. Verify
+the connection works before continuing:
+
+```bash
+PGPASSWORD='CHANGE_ME' psql -h localhost -U lizt -d lizt -c '\conninfo'
+```
+
+### 4. Configure environment variables
+
+If running the scanner directly (not via the installed service):
+
+```bash
+export DATABASE_URL="postgres://lizt:CHANGE_ME@localhost/lizt"
+export NVD_API_KEY="your-nvd-api-key"  # Optional — raises rate limit from 5 to 50 req/30s
+```
+
+For the `reset` subcommand only (used to drop and recreate the database
+from scratch; this requires superuser privileges that the normal
+`DATABASE_URL` credentials don't carry):
+
+```bash
+export ADMINDB_URL="postgres://postgres@localhost/postgres"
 export DATABASE_NAME="lizt"
 ```
 
-### 2. Build
+### 5. Build
 
 ```bash
 cargo build --release           # builds lizt, lizt-cli, and xtask
@@ -104,7 +172,7 @@ The build compiles the BPF kernel programs (targeting `bpfel-unknown-none`) via 
 script and embeds the resulting bytecode directly into the `lizt` binary. No separate BPF
 object file is deployed.
 
-### 3. Run the scanner
+### 6. Run the scanner
 
 ```bash
 cargo run -p cli -- scan
@@ -114,41 +182,115 @@ The database schema is applied automatically on first connection. Running `cargo
 without a subcommand opens an interactive TUI menu where you can select and run any command
 without remembering subcommand names.
 
-### 5. Install (optional — for running as system services)
+## Deployment
 
-The `xtask` binary installs binaries, config files, and systemd units. Build first with
-`cargo build --release`, then run with `sudo -E` to preserve environment variables:
+For production or dedicated-host deployments (e.g., running as a system
+service behind nginx). Assumes steps 1–3 from [Setup (Development)](#setup-development)
+have been completed — system packages, Rust toolchains, and PostgreSQL.
 
-```bash
-sudo -E ./target/release/xtask install    # /usr/bin/lizt + /usr/bin/lizt-cli + nginx + systemd
-```
-
-To uninstall:
+### 1. Build
 
 ```bash
-sudo -E ./target/release/xtask uninstall
+cargo build --release           # builds lizt, lizt-cli, and xtask
 ```
 
-Each install creates `/etc/lizt/env` from the template if it does not already exist — edit it
-to set `DATABASE_URL` and `NVD_API_KEY` before starting any service. Credentials are loaded
-via `EnvironmentFile=/etc/lizt/env` and never appear in the unit file or source tree.
+### 2. Install as a system service
 
-The systemd service grants `CAP_BPF`, `CAP_PERFMON`, and `CAP_SYS_RESOURCE` via ambient
+The `xtask` binary installs binaries, config files, systemd units, and an
+nginx reverse proxy with basic-auth and a self-signed TLS cert:
+
+```bash
+sudo ./target/release/xtask install --release
+```
+
+This will:
+
+- Install `/usr/bin/lizt` and `/usr/bin/lizt-cli`
+- Create a system user `lizt` and `/var/log/lizt/`
+- Generate `/etc/lizt/env` from a template (preserved across reinstalls)
+- Generate a self-signed TLS cert at `/etc/nginx/ssl/lizt.{crt,key}` (preserved across reinstalls)
+- Prompt for an nginx htpasswd username and password (preserved across reinstalls)
+- Start the `lizt.service` systemd unit and reload nginx
+
+Credentials are loaded via `EnvironmentFile=/etc/lizt/env` and never appear
+in the unit file or source tree. The systemd unit grants `CAP_BPF`,
+`CAP_PERFMON`, `CAP_SYS_ADMIN`, and `CAP_SYS_RESOURCE` via ambient
 capabilities so the eBPF monitor can attach probes without running as root.
 
-### 6. Run ad-hoc (requires prior scan for eBPF probes)
+### 3. Configure DATABASE_URL and restart
+
+After the initial install, **edit `/etc/lizt/env` to set the real
+`DATABASE_URL`** (and optionally `NVD_API_KEY`), then restart the service
+to pick up the change:
+
+```bash
+sudo systemctl restart lizt
+```
+
+The service will run but fail its health checks until `DATABASE_URL`
+points to a reachable PostgreSQL instance. Check status with
+`sudo systemctl status lizt`.
+
+### 4. Verify the install
+
+`xtask verify` runs a suite of checks against the installed deployment —
+file permissions, capability declarations, systemd status, nginx
+configuration, TLS cert expiry, and a live HTTPS request to the dashboard.
+Exits non-zero if any check fails, and writes a JSON report to
+`/tmp/lizt-verify.json` by default:
+
+```bash
+sudo ./target/release/xtask verify
+```
+
+Expected output on a healthy install:
+
+```
+Lizt install verification
+─────────────────────────
+  ✓ mode 755: /usr/bin/lizt           755
+  ✓ mode 600: /etc/lizt/env           600
+  ...
+  ✓ dashboard returns 401             401 Unauthorized
+─────────────────────────
+21 passed, 0 failed, 0 warned
+```
+
+Use `--json-out <path>` to change the JSON report location.
+
+### 5. Access the dashboard
+
+Open `https://<host>/` in a browser — use the host's public IP or
+hostname, not `localhost`, if accessing from a different machine. The
+self-signed cert will produce a browser warning — click through, then
+authenticate with the htpasswd credentials you set during install.
+
+### 6. Uninstall
+
+```bash
+sudo ./target/release/xtask uninstall
+```
+
+Removes binaries, the systemd unit, nginx site, and `/etc/lizt/log4rs.yaml`.
+Deliberately **does not** remove `/etc/lizt/env`, `/var/log/lizt/`, the TLS
+certs, or the htpasswd file — so a subsequent `install` preserves your
+configuration and credentials.
+
+### 7. Run ad-hoc (alternative)
+
+To run the binary directly without the installed service (requires a
+prior scan for eBPF probes to attach to):
 
 ```bash
 sudo -E ./target/release/lizt
 ```
 
-`-E` preserves environment variables (`DATABASE_URL` etc.). Alternatively, grant the binary
-specific capabilities instead of running as root:
+### 8. (Optional) Test against vulnerable libraries
 
-```bash
-sudo setcap cap_bpf,cap_perfmon,cap_sys_resource+eip ./target/release/lizt
-./target/release/lizt
-```
+Helper scripts in `scripts/` build older, vulnerable zlib/OpenSSL/expat
+into `/opt/vulnerable/` for demonstrating runtime reachability detection.
+See `scripts/get-*.sh` and `scripts/execute_eval_workloads.sh`.
+
 
 ## CLI Subcommands (Scanner)
 
