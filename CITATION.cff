@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use Lizt, please cite it using the metadata below."
+title: "Lizt: eBPF-Based Runtime Reachability Analysis for Software Composition Analysis"
+authors:
+  - family-names: Basil
+    given-names: Garrett
+    email: gbasil3@gatech.edu
+    affiliation: "Georgia Institute of Technology"
+    orcid: "https://orcid.org/0009-0004-3908-6902"
+version: 0.1.0-submission
+date-released: "2026-04-18"
+license: MIT
+repository-code: "https://github.com/TxakurraHex/lizt"
+type: software
+keywords:
+  - software composition analysis
+  - runtime reachability
+  - eBPF
+  - vulnerability detection
